@@ -5503,7 +5503,7 @@ async function exportResultPdf(){
       <td style="text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700;color:${m.score>=(p.settings.passingScore||80)?'#2e8b57':'#B0342F'};">${m.score}%</td>
     </tr>`).join('');
 
-  const verifyUrl2 = buildVerificationUrl(payload.learner.name, payload.courseTitle, dateStr, payload.verificationCode, payload.overallScore);
+  const verifyUrl2 = buildVerificationUrl(payload.learner.name, payload.courseTitle, dateStr, computeVerificationCode(`${payload.learner.name}|${payload.courseTitle}|${dateStr}`), payload.overallScore);
   const qrSvg2 = verifyUrl2 ? buildVerificationQrSvg(verifyUrl2, 4) : '';
   const qrBlockHtml2 = qrSvg2
     ? `<div class="verify-qr">${qrSvg2}<div class="verify-qr-note">${esc(t().certQrNote)}</div></div>`
@@ -5547,7 +5547,7 @@ async function exportResultPdf(){
       </div>
       <div class="meta-row">
         <span>${esc(t().certDate)}: ${esc(dateStr)}</span>
-        <span>${esc(t().certCode)}: ${esc(payload.verificationCode)}</span>
+        <span>${esc(t().certCode)}: ${esc(computeVerificationCode(`${payload.learner.name}|${payload.courseTitle}|${dateStr}`))}</span>
       </div>
       ${qrBlockHtml2}
     </div>
@@ -5566,7 +5566,7 @@ async function importResult(ev){
     const payload = JSON.parse(txt);
     if (!payload || payload.app !== 'hsa-elearning-result' || !payload.learner) throw new Error('bad');
     state.project.completionLog = state.project.completionLog || [];
-    const dup = state.project.completionLog.some(e => e.verificationCode === payload.verificationCode && e.completedAt === payload.completedAt);
+    const dup = state.project.completionLog.some(e => e.verificationCode === computeVerificationCode(`${payload.learner.name}|${payload.courseTitle}|${dateStr}`) && e.completedAt === payload.completedAt);
     if (!dup) state.project.completionLog.push(payload);
     saveProject(true);
     buildAdminPanel();
