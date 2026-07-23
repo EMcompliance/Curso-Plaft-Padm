@@ -976,7 +976,7 @@ const UI = {
 const params = new URLSearchParams(location.search);
 var state = {
   lang: params.get('lang') === 'en' ? 'en' : 'es',
-  editing: params.get('modo') === 'vista' ? false : true,
+  editing: window.__ADMIN_UNLOCKED__ === true && params.get('modo') !== 'vista',
   mirror: params.get('modo') === 'vista',
   currentModule: 0,
   project: null,
@@ -1558,6 +1558,7 @@ function renderChrome(){
   document.getElementById('pillView').textContent = '👁 ' + t().view;
   document.getElementById('pillEdit').classList.toggle('on', state.editing);
   document.getElementById('pillView').classList.toggle('on', !state.editing);
+  document.getElementById('modePills').style.display = (window.__ADMIN_UNLOCKED__ === true) ? '' : 'none';
   const be = document.getElementById('btnOpenMirror');
   be.title = state.lang==='es' ? t().openEn : t().openEs;
   document.getElementById('btnMenuTxt').textContent = t().menu;
@@ -5248,7 +5249,7 @@ function flushActiveEdit(){
   if (isEditable) el.blur();
 }
 function setLang(l){ flushActiveEdit(); state.lang = l; renderAll(); }
-function setMode(edit){ flushActiveEdit(); state.editing = edit; if (!edit){ closeStylePanel(); closeSymbolPanel(); closeBrandPanel(); closeTrashPanel(); closeAdminPanel(); closeCertPanel(); closeMotivationPanel(); } renderAll(); }
+function setMode(edit){ if (edit && window.__ADMIN_UNLOCKED__ !== true) return; flushActiveEdit(); state.editing = edit; if (!edit){ closeStylePanel(); closeSymbolPanel(); closeBrandPanel(); closeTrashPanel(); closeAdminPanel(); closeCertPanel(); closeMotivationPanel(); } renderAll(); }
 function gotoModule(i){
   if (i<0 || i>=state.project.modules.length) return;
   if (!isNavAllowed(state.project, i)){ toast(t().moduleLocked, 3000); return; }
@@ -5767,6 +5768,7 @@ function setMotivationMessage(i, v){
 }
 
 function openAdminPanel(){
+  if (window.__ADMIN_UNLOCKED__ !== true) return;
   closeStylePanel(); closeSymbolPanel(); closeBrandPanel(); closeTrashPanel(); closeCertPanel(); closeMotivationPanel();
   document.getElementById('adminPanelTitle').textContent = t().adminPanelTitle;
   buildAdminPanel();
