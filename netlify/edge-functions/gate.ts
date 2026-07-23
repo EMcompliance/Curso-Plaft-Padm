@@ -45,7 +45,7 @@ async function signToken(payload: Record<string, unknown>, secret: string): Prom
   const payloadB64 = b64url(new TextEncoder().encode(JSON.stringify(payload)));
   const key = await hmacKey(secret);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payloadB64));
-  return \`\${payloadB64}.\${b64url(new Uint8Array(sig))}\`;
+  return `${payloadB64}.${b64url(new Uint8Array(sig))}`;
 }
 
 async function verifyToken(token: string, secret: string): Promise<Record<string, unknown> | null> {
@@ -84,7 +84,7 @@ function rateLimitStore() {
 }
 
 async function isRateLimited(ip: string, scope: string): Promise<boolean> {
-  const raw = await rateLimitStore().get(\`\${ip}:\${scope}\`);
+  const raw = await rateLimitStore().get(`${ip}:${scope}`);
   if (!raw) return false;
   const data = JSON.parse(raw);
   const windowStart = Date.now() - WINDOW_MINUTES * 60 * 1000;
@@ -93,7 +93,7 @@ async function isRateLimited(ip: string, scope: string): Promise<boolean> {
 
 async function recordFailure(ip: string, scope: string): Promise<void> {
   const store = rateLimitStore();
-  const key = \`\${ip}:\${scope}\`;
+  const key = `${ip}:${scope}`;
   const raw = await store.get(key);
   const now = Date.now();
   const windowStart = now - WINDOW_MINUTES * 60 * 1000;
@@ -103,15 +103,15 @@ async function recordFailure(ip: string, scope: string): Promise<void> {
 }
 
 async function clearFailures(ip: string, scope: string): Promise<void> {
-  await rateLimitStore().delete(\`\${ip}:\${scope}\`);
+  await rateLimitStore().delete(`${ip}:${scope}`);
 }
 
 function pageShellHtml(title: string, body: string): string {
-  return \`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>\${esc(title)}</title>
+<title>${esc(title)}</title>
 <style>
   body{font-family:system-ui,sans-serif;background:#0f1115;color:#eee;margin:0;padding:24px;min-height:100vh;box-sizing:border-box;}
   .wrap{max-width:480px;margin:40px auto;}
@@ -126,7 +126,7 @@ function pageShellHtml(title: string, body: string): string {
   .row span{flex:1;font-family:monospace;}
   a{color:#9db4ff;}
 </style></head>
-<body><div class="wrap">\${body}</div></body></html>\`;
+<body><div class="wrap">${body}</div></body></html>`;
 }
 
 function pageShell(title: string, body: string): Response {
@@ -134,15 +134,15 @@ function pageShell(title: string, body: string): Response {
 }
 
 function loginPage(opts: { title: string; error?: string; action: string; hiddenScope: string }): Response {
-  const body = \`<div class="card">
-<form method="POST" action="\${esc(opts.action)}">
-  <h1>\${esc(opts.title)}</h1>
-  \${opts.error ? \`<div class="err">\${esc(opts.error)}</div>\` : ""}
-  <input type="hidden" name="scope" value="\${esc(opts.hiddenScope)}">
+  const body = `<div class="card">
+<form method="POST" action="${esc(opts.action)}">
+  <h1>${esc(opts.title)}</h1>
+  ${opts.error ? `<div class="err">${esc(opts.error)}</div>` : ""}
+  <input type="hidden" name="scope" value="${esc(opts.hiddenScope)}">
   <input type="password" name="password" placeholder="Contraseña" autofocus required>
   <button type="submit">Entrar</button>
 </form>
-</div>\`;
+</div>`;
   return new Response(pageShellHtml(opts.title, body), {
     status: 401,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -155,41 +155,41 @@ async function clientsManagementPage(message?: { ok?: string; err?: string }): P
   const rows = list.blobs
     .map((b) => {
       const slug = esc(b.key);
-      return \`<div class="row">
-        <span>\${slug}</span>
-        <form method="POST" action="\${ADMIN_CLIENTS_API}" style="display:flex;gap:6px;flex:2;">
+      return `<div class="row">
+        <span>${slug}</span>
+        <form method="POST" action="${ADMIN_CLIENTS_API}" style="display:flex;gap:6px;flex:2;">
           <input type="hidden" name="action" value="update">
-          <input type="hidden" name="slug" value="\${slug}">
+          <input type="hidden" name="slug" value="${slug}">
           <input type="password" name="password" placeholder="Nueva contraseña" required style="margin:0;">
           <button type="submit">Guardar</button>
         </form>
-        <form method="POST" action="\${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');">
+        <form method="POST" action="${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');">
           <input type="hidden" name="action" value="delete">
-          <input type="hidden" name="slug" value="\${slug}">
+          <input type="hidden" name="slug" value="${slug}">
           <button type="submit" class="danger">Eliminar</button>
         </form>
-      </div>\`;
+      </div>`;
     })
-    .join("") || \`<p style="opacity:.7;">Todavía no hay ningún cliente configurado.</p>\`;
+    .join("") || `<p style="opacity:.7;">Todavía no hay ningún cliente configurado.</p>`;
 
-  const body = \`
+  const body = `
   <div class="card">
     <h1>Panel de administrador — Clientes</h1>
-    \${message?.ok ? \`<div class="ok">\${esc(message.ok)}</div>\` : ""}
-    \${message?.err ? \`<div class="err">\${esc(message.err)}</div>\` : ""}
+    ${message?.ok ? `<div class="ok">${esc(message.ok)}</div>` : ""}
+    ${message?.err ? `<div class="err">${esc(message.err)}</div>` : ""}
     <p style="opacity:.7;font-size:13px;">Cada fila es un cliente. El nombre (slug) define la carpeta pública, ej: <code>cliente-a</code> corresponde a <code>curso.emcomplianceuy.com/cliente-a/</code>. La carpeta "default" es la raíz del sitio.</p>
-    \${rows}
+    ${rows}
   </div>
   <div class="card">
     <h1>Agregar cliente nuevo</h1>
-    <form method="POST" action="\${ADMIN_CLIENTS_API}">
+    <form method="POST" action="${ADMIN_CLIENTS_API}">
       <input type="hidden" name="action" value="create">
       <input type="text" name="slug" placeholder="nombre-cliente (solo letras, números y guiones)" pattern="[a-z0-9-]{1,40}" required>
       <input type="password" name="password" placeholder="Contraseña para este cliente" required>
       <button type="submit">Crear</button>
     </form>
   </div>
-  <p><a href="/admin">&larr; Volver al curso (modo admin)</a></p>\`;
+  <p><a href="/admin">&larr; Volver al curso (modo admin)</a></p>`;
   return pageShell("Panel de administrador — Clientes", body);
 }
 
@@ -218,7 +218,7 @@ export default async (req: Request, context: Context) => {
       return loginPage({
         title: isAdmin ? "Panel de administrador" : "Acceso al curso",
         error: "Demasiados intentos fallidos. Probá de nuevo en unos minutos.",
-        action: \`\${AUTH_PATH}?redirect=\${encodeURIComponent(redirectTo)}\`,
+        action: `${AUTH_PATH}?redirect=${encodeURIComponent(redirectTo)}`,
         hiddenScope: scope,
       });
     }
@@ -240,7 +240,7 @@ export default async (req: Request, context: Context) => {
         error: storedExists
           ? "Contraseña incorrecta."
           : "Este curso todavía no tiene una contraseña configurada. Contactá al administrador.",
-        action: \`\${AUTH_PATH}?redirect=\${encodeURIComponent(redirectTo)}\`,
+        action: `${AUTH_PATH}?redirect=${encodeURIComponent(redirectTo)}`,
         hiddenScope: scope,
       });
     }
@@ -251,7 +251,7 @@ export default async (req: Request, context: Context) => {
     const res = new Response(null, { status: 302, headers: { location: redirectTo } });
     res.headers.append(
       "set-cookie",
-      \`\${isAdmin ? ADMIN_COOKIE : SESSION_COOKIE}=\${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=\${hours * 3600}\`,
+      `${isAdmin ? ADMIN_COOKIE : SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${hours * 3600}`,
     );
     return res;
   }
@@ -261,7 +261,7 @@ export default async (req: Request, context: Context) => {
     if (!(await validAdminSession())) {
       return loginPage({
         title: "Panel de administrador",
-        action: \`\${AUTH_PATH}?redirect=\${encodeURIComponent(url.pathname)}\`,
+        action: `${AUTH_PATH}?redirect=${encodeURIComponent(url.pathname)}`,
         hiddenScope: "admin",
       });
     }
@@ -278,10 +278,10 @@ export default async (req: Request, context: Context) => {
         message = { err: "Nombre de cliente inválido (solo letras minúsculas, números y guiones)." };
       } else if (action === "delete") {
         await passwordStore().delete(slug);
-        message = { ok: \`Cliente "\${slug}" eliminado.\` };
+        message = { ok: `Cliente "${slug}" eliminado.` };
       } else if ((action === "create" || action === "update") && password.length > 0) {
         await passwordStore().set(slug, password);
-        message = { ok: \`Contraseña de "\${slug}" guardada.\` };
+        message = { ok: `Contraseña de "${slug}" guardada.` };
       } else {
         message = { err: "Faltan datos." };
       }
@@ -296,7 +296,7 @@ export default async (req: Request, context: Context) => {
     if (!(await validAdminSession())) {
       return loginPage({
         title: "Panel de administrador",
-        action: \`\${AUTH_PATH}?redirect=\${encodeURIComponent(url.pathname)}\`,
+        action: `${AUTH_PATH}?redirect=${encodeURIComponent(url.pathname)}`,
         hiddenScope: "admin",
       });
     }
@@ -315,7 +315,7 @@ export default async (req: Request, context: Context) => {
   if (!hasValidSession) {
     return loginPage({
       title: "Acceso al curso",
-      action: \`\${AUTH_PATH}?redirect=\${encodeURIComponent(url.pathname)}\`,
+      action: `${AUTH_PATH}?redirect=${encodeURIComponent(url.pathname)}`,
       hiddenScope: scope,
     });
   }
@@ -328,8 +328,8 @@ async function injectFlag(response: Response, adminUnlocked: boolean): Promise<R
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return response;
   const html = await response.text();
-  const flagScript = \`<script>window.__ADMIN_UNLOCKED__=\${adminUnlocked};</script>\`;
-  const injected = html.includes("</head>") ? html.replace("</head>", \`\${flagScript}</head>\`) : flagScript + html;
+  const flagScript = `<script>window.__ADMIN_UNLOCKED__=${adminUnlocked};</script>`;
+  const injected = html.includes("</head>") ? html.replace("</head>", `${flagScript}</head>`) : flagScript + html;
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   return new Response(injected, { status: response.status, statusText: response.statusText, headers });
