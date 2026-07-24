@@ -108,6 +108,14 @@ async function getClientRecord(scope: string): Promise<ClientRecord | null> {
   return parseClientRecord(await passwordStore().get(scope));
 }
 
+function contentStore() {
+  return getStore({ name: "client-content", consistency: "strong" });
+}
+
+async function getClientContent(scope: string): Promise<string | null> {
+  return contentStore().get(scope);
+}
+
 async function isRateLimited(ip: string, scope: string): Promise<boolean> {
   const raw = await rateLimitStore().get(`${ip}:${scope}`);
   if (!raw) return false;
@@ -225,28 +233,39 @@ ${brandBlockHtml(opts.brand)}
 
 async function clientsManagementPage(message?: { ok?: string; err?: string }): Promise<Response> {
   const store = passwordStore();
+  const cStore = contentStore();
   const list = await store.list();
   const entries = await Promise.all(
-    list.blobs.map(async (b) => ({ slug: b.key, record: parseClientRecord(await store.get(b.key)) })),
+    list.blobs.map(async (b) => ({
+      slug: b.key,
+      record: parseClientRecord(await store.get(b.key)),
+      hasContent: (await cStore.get(b.key)) !== null,
+    })),
   );
 
   const rows =
     entries
-      .map(({ slug, record }) => {
+      .map(({ slug, record, hasContent }) => {
         const s = esc(slug);
         const currentName = record?.displayName || "";
         const currentColor = record?.color && /^#[0-9a-fA-F]{6}$/.test(record.color) ? record.color : DEFAULT_ACCENT;
         const logoPreview = record?.logo ? `<img src="${esc(record.logo)}" alt="" style="height:20px;border-radius:4px;">` : "";
+        const contentBadge = hasContent
+          ? `<span class="dname">&#128196; contenido cargado</span>`
+          : `<span class="dname">sin contenido propio (usa el curso genérico)</span>`;
         return `<div class="client-row">
           <div class="client-row-head">${logoPreview}<span class="slug">${s}</span>${currentName ? `<span class="dname">${esc(currentName)}</span>` : ""}</div>
-          <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepLogo(this)">
+          <div class="client-row-head">${contentBadge}</div>
+          <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepUploads(this)">
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="slug" value="${s}">
             <input type="hidden" name="logo" class="logo-data">
+            <input type="hidden" name="content" class="content-data">
             <input type="password" name="password" placeholder="Nueva contraseña (opcional)">
             <input type="text" name="displayName" placeholder="Nombre para mostrar" value="${esc(currentName)}">
             <input type="color" name="color" value="${currentColor}" title="Color de la insignia">
             <input type="file" accept="image/*" class="logo-file" title="Logo (opcional)">
+            <input type="file" accept="application/json" class="content-file" title="Contenido del curso exportado (.json, opcional)">
             <button type="submit">Guardar</button>
           </form>
           <form method="POST" action="${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');">
@@ -268,9 +287,10 @@ async function clientsManagementPage(message?: { ok?: string; err?: string }): P
   </div>
   <div class="card">
     <h1>Agregar cliente nuevo</h1>
-    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" onsubmit="return prepLogo(this)">
+    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" onsubmit="return prepUploads(this)">
       <input type="hidden" name="action" value="create">
       <input type="hidden" name="logo" class="logo-data">
+      <input type="hidden" name="content" class="content-data">
       <input type="text" name="slug" placeholder="nombre-cliente (solo letras, números y guiones)" pattern="[a-z0-9-]{1,40}" required>
       <input type="password" name="password" placeholder="Contraseña para este cliente" required>
       <input type="text" name="displayName" placeholder="Nombre para mostrar (opcional)">
@@ -278,24 +298,45 @@ async function clientsManagementPage(message?: { ok?: string; err?: string }): P
       <input type="color" name="color" value="${DEFAULT_ACCENT}">
       <label style="margin-bottom:-4px;">Logo (opcional)</label>
       <input type="file" accept="image/*" class="logo-file">
+      <label style="margin-bottom:-4px;">Contenido del curso exportado (.json, opcional — todavía sin audio/imágenes)</label>
+      <input type="file" accept="application/json" class="content-file">
       <button type="submit">Crear</button>
     </form>
   </div>
   <p><a href="/admin">&larr; Volver al curso (modo admin)</a></p>
   <script>
-    function prepLogo(form) {
-      var fileInput = form.querySelector('.logo-file');
-      var hidden = form.querySelector('.logo-data');
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function () {
-          hidden.value = reader.result;
-          form.submit();
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-        return false;
+    function prepUploads(form) {
+      var logoInput = form.querySelector('.logo-file');
+      var logoHidden = form.querySelector('.logo-data');
+      var contentInput = form.querySelector('.content-file');
+      var contentHidden = form.querySelector('.content-data');
+      var tasks = [];
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        tasks.push(new Promise(function (resolve) {
+          var r = new FileReader();
+          r.onload = function () { logoHidden.value = r.result; resolve(); };
+          r.readAsDataURL(logoInput.files[0]);
+        }));
       }
-      return true;
+      if (contentInput && contentInput.files && contentInput.files[0]) {
+        tasks.push(new Promise(function (resolve) {
+          var r = new FileReader();
+          r.onload = function () {
+            try {
+              var parsed = JSON.parse(r.result);
+              var proj = (parsed && parsed.app === 'hsa-elearning' && parsed.project) ? parsed.project : parsed;
+              contentHidden.value = JSON.stringify(proj);
+            } catch (e) {
+              alert('No se pudo leer el archivo de contenido (no es un JSON válido de este programa).');
+            }
+            resolve();
+          };
+          r.readAsText(contentInput.files[0]);
+        }));
+      }
+      if (tasks.length === 0) return true;
+      Promise.all(tasks).then(function () { form.submit(); });
+      return false;
     }
   </script>`;
   return pageShell("Panel de administrador — Clientes", body);
@@ -380,6 +421,7 @@ export default async (req: Request, context: Context) => {
       const displayName = String(form.get("displayName") || "").trim();
       const logo = String(form.get("logo") || "").trim();
       const color = String(form.get("color") || "").trim();
+      const content = String(form.get("content") || "").trim();
       const validSlug = /^[a-z0-9-]{1,40}$/.test(slug) && !RESERVED_SLUGS.includes(slug);
 
       let message: { ok?: string; err?: string } = {};
@@ -387,6 +429,7 @@ export default async (req: Request, context: Context) => {
         message = { err: "Nombre de cliente inválido (solo letras minúsculas, números y guiones)." };
       } else if (action === "delete") {
         await passwordStore().delete(slug);
+        await contentStore().delete(slug);
         message = { ok: `Cliente "${slug}" eliminado.` };
       } else if (action === "create" || action === "update") {
         const existing = action === "update" ? await getClientRecord(slug) : null;
@@ -402,7 +445,18 @@ export default async (req: Request, context: Context) => {
           if (finalLogo) record.logo = finalLogo;
           if (finalColor) record.color = finalColor;
           await passwordStore().set(slug, JSON.stringify(record));
-          message = { ok: `Datos de "${slug}" guardados.` };
+          let contentNote = "";
+          if (content.length > 0) {
+            try {
+              const parsed = JSON.parse(content);
+              if (!parsed || !Array.isArray(parsed.modules)) throw new Error("shape");
+              await contentStore().set(slug, content);
+              contentNote = " Contenido del curso actualizado.";
+            } catch {
+              contentNote = " (El contenido del curso no se pudo leer y no se guardó; revisá el archivo.)";
+            }
+          }
+          message = { ok: `Datos de "${slug}" guardados.${contentNote}` };
         }
       } else {
         message = { err: "Faltan datos." };
@@ -444,17 +498,21 @@ export default async (req: Request, context: Context) => {
     });
   }
 
+  const content = await getClientContent(scope);
   const rewritten = new URL(req.url);
   rewritten.pathname = "/index.html";
   const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
-  return injectFlag(response, false);
+  return injectFlag(response, false, content);
 };
 
-async function injectFlag(response: Response, adminUnlocked: boolean): Promise<Response> {
+async function injectFlag(response: Response, adminUnlocked: boolean, preloadedProject?: string | null): Promise<Response> {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return response;
   const html = await response.text();
-  const flagScript = `<script>window.__ADMIN_UNLOCKED__=${adminUnlocked};</script>`;
+  let flagScript = `<script>window.__ADMIN_UNLOCKED__=${adminUnlocked};</script>`;
+  if (preloadedProject) {
+    flagScript += `<script>window.__PRELOADED_PROJECT__=${preloadedProject};</script>`;
+  }
   const injected = html.includes("</head>") ? html.replace("</head>", `${flagScript}</head>`) : flagScript + html;
   const headers = new Headers(response.headers);
   headers.delete("content-length");
