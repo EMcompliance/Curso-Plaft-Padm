@@ -444,7 +444,9 @@ export default async (req: Request, context: Context) => {
     });
   }
 
-  const response = await context.next();
+  const rewritten = new URL(req.url);
+  rewritten.pathname = "/index.html";
+  const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
   return injectFlag(response, false);
 };
 
