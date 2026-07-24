@@ -76,11 +76,11 @@ function clientSlugFor(pathname: string): string {
 }
 
 function passwordStore() {
-  return getStore("client-passwords");
+  return getStore({ name: "client-passwords", consistency: "strong" });
 }
 
 function rateLimitStore() {
-  return getStore("rate-limit");
+  return getStore({ name: "rate-limit", consistency: "strong" });
 }
 
 async function isRateLimited(ip: string, scope: string): Promise<boolean> {
