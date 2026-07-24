@@ -6877,7 +6877,7 @@ function renderVerificationLanding(b64){
     else showVerify();
     return;
   }
-  state.project = migrateProject(loadProject() || seedProject());
+  state.project = migrateProject(window.__PRELOADED_PROJECT__ || loadProject() || seedProject());
   if (!loadProject()) saveProject(true);
   try {
     const lastId = localStorage.getItem(LASTMOD_KEY);
