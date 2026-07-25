@@ -6,6 +6,7 @@ const ADMIN_COOKIE = "admin_session";
 const AUTH_PATH = "/__auth";
 const ADMIN_CLIENTS_PATH = "/admin/clientes";
 const ADMIN_CLIENTS_API = "/__admin_clients";
+const SAVE_CONTENT_PATH = "/__save_content";
 const SESSION_HOURS = 16;
 const ADMIN_SESSION_HOURS = 8;
 const MAX_ATTEMPTS = 5;
@@ -213,6 +214,9 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .client-form button{grid-column:1 / -1;width:auto;padding:9px 18px;justify-self:start;}
   button.danger{background:#B0342F;width:auto;padding:8px 16px;font-size:13px;}
   .create-form{display:flex;flex-direction:column;gap:10px;}
+  .client-row-actions{margin-bottom:12px;}
+  .client-row-actions form{display:inline;margin:0;}
+  .wbtn-link{display:inline-block;padding:8px 14px;border-radius:8px;background:${accent};color:#fff;font-size:13px;font-weight:600;text-decoration:none;}
 </style></head>
 <body><div class="wrap">${body}</div></body></html>`;
 }
@@ -266,41 +270,36 @@ ${brandBlockHtml(opts.brand)}
   });
 }
 
-async function clientsManagementPage(message?: { ok?: string; err?: string }): Promise<Response> {
+async function clientsManagementPage(message?: { ok?: string; err?: string; okHtml?: string }): Promise<Response> {
   const store = passwordStore();
-  const cStore = contentStore();
   const list = await store.list();
   const entries = await Promise.all(
     list.blobs.map(async (b) => ({
       slug: b.key,
       record: parseClientRecord(await store.get(b.key)),
-      hasContent: (await cStore.get(b.key)) !== null,
     })),
   );
 
   const rows =
     entries
-      .map(({ slug, record, hasContent }) => {
+      .map(({ slug, record }) => {
         const s = esc(slug);
         const currentName = record?.displayName || "";
         const currentColor = record?.color && /^#[0-9a-fA-F]{6}$/.test(record.color) ? record.color : DEFAULT_ACCENT;
         const logoPreview = record?.logo ? `<img src="${esc(record.logo)}" alt="" style="height:20px;border-radius:4px;">` : "";
-        const contentBadge = hasContent
-          ? `<span class="dname">&#128196; contenido cargado</span>`
-          : `<span class="dname">sin contenido propio (usa el curso genérico)</span>`;
         return `<div class="client-row">
           <div class="client-row-head">${logoPreview}<span class="slug">${s}</span>${currentName ? `<span class="dname">${esc(currentName)}</span>` : ""}</div>
-          <div class="client-row-head">${contentBadge}</div>
-          <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepUploads(this)">
+          <div class="client-row-actions">
+            <a class="wbtn-link" href="/${s}/admin" target="_blank" rel="noopener">&#9998; Editar contenido del curso</a>
+          </div>
+          <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepLogo(this)">
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="slug" value="${s}">
             <input type="hidden" name="logo" class="logo-data">
-            <input type="hidden" name="content" class="content-data">
             <input type="password" name="password" placeholder="Nueva contraseña (opcional)">
             <input type="text" name="displayName" placeholder="Nombre para mostrar" value="${esc(currentName)}">
             <input type="color" name="color" value="${currentColor}" title="Color de la insignia">
             <input type="file" accept="image/*" class="logo-file" title="Logo (opcional)">
-            <input type="file" accept="application/json" class="content-file" title="Contenido del curso exportado (.json, opcional)">
             <button type="submit">Guardar</button>
           </form>
           <form method="POST" action="${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');">
@@ -315,17 +314,16 @@ async function clientsManagementPage(message?: { ok?: string; err?: string }): P
   const body = `
   <div class="card">
     <h1>Panel de administrador — Clientes</h1>
-    ${message?.ok ? `<div class="ok">${esc(message.ok)}</div>` : ""}
+    ${message?.okHtml ? `<div class="ok">${message.okHtml}</div>` : message?.ok ? `<div class="ok">${esc(message.ok)}</div>` : ""}
     ${message?.err ? `<div class="err">${esc(message.err)}</div>` : ""}
-    <p class="muted">Cada fila es un cliente. El nombre (slug) define la carpeta pública, ej: <code>cliente-a</code> corresponde a <code>curso.emcomplianceuy.com/cliente-a/</code>. La carpeta "default" es la raíz del sitio. El nombre para mostrar, el logo y el color son opcionales — si no los cargás, esa pantalla de acceso queda genérica.</p>
+    <p class="muted">Cada fila es un cliente. El nombre (slug) define la carpeta pública, ej: <code>cliente-a</code> corresponde a <code>curso.emcomplianceuy.com/cliente-a/</code>. La carpeta "default" es la raíz del sitio. El nombre para mostrar, el logo y el color son opcionales — si no los cargás, esa pantalla de acceso queda genérica. Para editar el contenido del curso de cada cliente, usá el botón "Editar contenido del curso": te lleva directo al curso en modo edición, y todo lo que cambies ahí se guarda solo, sin tener que subir ningún archivo.</p>
     ${rows}
   </div>
   <div class="card">
     <h1>Agregar cliente nuevo</h1>
-    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" onsubmit="return prepUploads(this)">
+    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" onsubmit="return prepLogo(this)">
       <input type="hidden" name="action" value="create">
       <input type="hidden" name="logo" class="logo-data">
-      <input type="hidden" name="content" class="content-data">
       <input type="text" name="slug" placeholder="nombre-cliente (solo letras, números y guiones)" pattern="[a-z0-9-]{1,40}" required>
       <input type="password" name="password" placeholder="Contraseña para este cliente" required>
       <input type="text" name="displayName" placeholder="Nombre para mostrar (opcional)">
@@ -333,44 +331,18 @@ async function clientsManagementPage(message?: { ok?: string; err?: string }): P
       <input type="color" name="color" value="${DEFAULT_ACCENT}">
       <label style="margin-bottom:-4px;">Logo (opcional)</label>
       <input type="file" accept="image/*" class="logo-file">
-      <label style="margin-bottom:-4px;">Contenido del curso exportado (.json, opcional — todavía sin audio/imágenes)</label>
-      <input type="file" accept="application/json" class="content-file">
       <button type="submit">Crear</button>
     </form>
   </div>
   <p><a href="/admin">&larr; Volver al curso (modo admin)</a></p>
   <script>
-    function prepUploads(form) {
+    function prepLogo(form) {
       var logoInput = form.querySelector('.logo-file');
       var logoHidden = form.querySelector('.logo-data');
-      var contentInput = form.querySelector('.content-file');
-      var contentHidden = form.querySelector('.content-data');
-      var tasks = [];
-      if (logoInput && logoInput.files && logoInput.files[0]) {
-        tasks.push(new Promise(function (resolve) {
-          var r = new FileReader();
-          r.onload = function () { logoHidden.value = r.result; resolve(); };
-          r.readAsDataURL(logoInput.files[0]);
-        }));
-      }
-      if (contentInput && contentInput.files && contentInput.files[0]) {
-        tasks.push(new Promise(function (resolve) {
-          var r = new FileReader();
-          r.onload = function () {
-            try {
-              var parsed = JSON.parse(r.result);
-              var proj = (parsed && parsed.app === 'hsa-elearning' && parsed.project) ? parsed.project : parsed;
-              contentHidden.value = JSON.stringify(proj);
-            } catch (e) {
-              alert('No se pudo leer el archivo de contenido (no es un JSON válido de este programa).');
-            }
-            resolve();
-          };
-          r.readAsText(contentInput.files[0]);
-        }));
-      }
-      if (tasks.length === 0) return true;
-      Promise.all(tasks).then(function () { form.submit(); });
+      if (!logoInput || !logoInput.files || !logoInput.files[0]) return true;
+      var r = new FileReader();
+      r.onload = function () { logoHidden.value = r.result; form.submit(); };
+      r.readAsDataURL(logoInput.files[0]);
       return false;
     }
   </script>`;
@@ -456,10 +428,9 @@ export default async (req: Request, context: Context) => {
       const displayName = String(form.get("displayName") || "").trim();
       const logo = String(form.get("logo") || "").trim();
       const color = String(form.get("color") || "").trim();
-      const content = String(form.get("content") || "").trim();
       const validSlug = /^[a-z0-9-]{1,40}$/.test(slug) && !RESERVED_SLUGS.includes(slug);
 
-      let message: { ok?: string; err?: string } = {};
+      let message: { ok?: string; err?: string; okHtml?: string } = {};
       if (!validSlug) {
         message = { err: "Nombre de cliente inválido (solo letras minúsculas, números y guiones)." };
       } else if (action === "delete") {
@@ -480,18 +451,11 @@ export default async (req: Request, context: Context) => {
           if (finalLogo) record.logo = finalLogo;
           if (finalColor) record.color = finalColor;
           await passwordStore().set(slug, JSON.stringify(record));
-          let contentNote = "";
-          if (content.length > 0) {
-            try {
-              const parsed = JSON.parse(content);
-              if (!parsed || !Array.isArray(parsed.modules)) throw new Error("shape");
-              await contentStore().set(slug, content);
-              contentNote = " Contenido del curso actualizado.";
-            } catch {
-              contentNote = " (El contenido del curso no se pudo leer y no se guardó; revisá el archivo.)";
-            }
+          if (action === "create") {
+            message = { okHtml: `Cliente "${esc(slug)}" creado. <a href="/${esc(slug)}/admin" target="_blank" rel="noopener">Editar contenido ahora &rarr;</a>` };
+          } else {
+            message = { ok: `Datos de "${slug}" guardados.` };
           }
-          message = { ok: `Datos de "${slug}" guardados.${contentNote}` };
         }
       } else {
         message = { err: "Faltan datos." };
@@ -502,8 +466,50 @@ export default async (req: Request, context: Context) => {
     return clientsManagementPage();
   }
 
-  // --- /admin: unlock the in-page admin panel of the course itself ---
-  if (path === "/admin" || path.startsWith("/admin/")) {
+  // --- POST /__save_content: admin live-editing a specific client saves straight to its Blobs entry ---
+  if (path === SAVE_CONTENT_PATH && req.method === "POST") {
+    if (!(await validAdminSession())) {
+      return new Response(JSON.stringify({ ok: false, error: "no autorizado" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    const form = await req.formData();
+    const slug = String(form.get("slug") || "").toLowerCase().trim();
+    const content = String(form.get("content") || "");
+    if (!/^[a-z0-9-]{1,40}$/.test(slug)) {
+      return new Response(JSON.stringify({ ok: false, error: "slug inválido" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if ((await getClientRecord(slug)) === null) {
+      return new Response(JSON.stringify({ ok: false, error: "cliente no encontrado" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    try {
+      const parsed = JSON.parse(content);
+      if (!parsed || !Array.isArray(parsed.modules)) throw new Error("shape");
+    } catch {
+      return new Response(JSON.stringify({ ok: false, error: "contenido inválido" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    await contentStore().set(slug, content);
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  // --- /admin or /{slug}/admin: unlock the in-page editor for a specific client's course ---
+  const pathSegments = path.split("/").filter(Boolean);
+  const isBareAdmin = path === "/admin";
+  const isClientAdminEdit = pathSegments.length === 2 && pathSegments[1] === "admin" && pathSegments[0] !== "admin";
+  if (isBareAdmin || isClientAdminEdit) {
     if (!(await validAdminSession())) {
       return loginPage({
         title: "Panel de administrador",
@@ -511,10 +517,12 @@ export default async (req: Request, context: Context) => {
         hiddenScope: "admin",
       });
     }
+    const editSlug = isBareAdmin ? "default" : pathSegments[0];
+    const content = await getClientContent(editSlug);
     const rewritten = new URL(req.url);
     rewritten.pathname = "/index.html";
     const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
-    return injectFlag(response, true);
+    return injectFlag(response, true, content, editSlug);
   }
 
   // --- Everything else: gate by the general client password for this path's slug ---
@@ -540,13 +548,21 @@ export default async (req: Request, context: Context) => {
   return injectFlag(response, false, content);
 };
 
-async function injectFlag(response: Response, adminUnlocked: boolean, preloadedProject?: string | null): Promise<Response> {
+async function injectFlag(
+  response: Response,
+  adminUnlocked: boolean,
+  preloadedProject?: string | null,
+  editingSlug?: string,
+): Promise<Response> {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return response;
   const html = await response.text();
   let flagScript = `<script>window.__ADMIN_UNLOCKED__=${adminUnlocked};</script>`;
   if (preloadedProject) {
     flagScript += `<script>window.__PRELOADED_PROJECT__=${preloadedProject};</script>`;
+  }
+  if (editingSlug) {
+    flagScript += `<script>window.__EDITING_SLUG__=${JSON.stringify(editingSlug)};</script>`;
   }
   const injected = html.includes("</head>") ? html.replace("</head>", `${flagScript}</head>`) : flagScript + html;
   const headers = new Headers(response.headers);
