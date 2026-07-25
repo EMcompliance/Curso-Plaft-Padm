@@ -165,7 +165,7 @@ function brandColor(brand?: ClientRecord | null): string {
 
 function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACCENT, wide: boolean = false): string {
   const topbar = wide
-    ? `<div class="topbar"><div class="brand">EM Compliance <span>/ Admin</span></div><a class="back-link" href="/admin">&larr; Volver al curso</a></div>`
+    ? `<div class="topbar"><div class="brand"><img src="${EM_LOGO_DATA_URI}" alt="EM Compliance"><span>/ Admin</span></div><a class="back-link" href="/admin">&larr; Volver al curso</a></div>`
     : "";
   return `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
@@ -177,7 +177,8 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .wrap{max-width:420px;margin:56px auto;padding:24px;}
   .wrap-wide{max-width:1140px;margin:0 auto;padding:28px 32px 48px;box-sizing:border-box;}
   .topbar{background:#0B1F33;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  .topbar .brand{color:#fff;font-weight:700;font-size:14px;letter-spacing:-.2px;}
+  .topbar .brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:14px;letter-spacing:-.2px;}
+  .topbar .brand img{height:22px;display:block;}
   .topbar .brand span{color:rgba(255,255,255,0.45);font-weight:400;}
   .topbar .back-link{color:rgba(255,255,255,0.7);font-size:12.5px;text-decoration:none;}
   .topbar .back-link:hover{color:#fff;}
