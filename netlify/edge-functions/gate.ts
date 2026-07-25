@@ -171,9 +171,9 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
 <title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  body{font-family:'IBM Plex Sans',Arial,Helvetica,sans-serif;background:#EFEDE4;color:#0B1F33;margin:0;padding:24px;min-height:100vh;box-sizing:border-box;}
+  body{font-family:'Inter',Arial,Helvetica,sans-serif;background:#EFEDE4;color:#0B1F33;margin:0;padding:24px;min-height:100vh;box-sizing:border-box;}
   .wrap{max-width:420px;margin:56px auto;}
   .card{background:#FFFFFF;border:1px solid rgba(11,31,51,0.12);padding:34px 30px;border-radius:14px;margin-bottom:16px;}
   .brand-logo{margin-bottom:24px;}
@@ -181,9 +181,9 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .brand-logo .name{font-size:13px;font-weight:600;color:#0B1F33;margin-top:2px;}
   .brand-logo .tagline{font-size:11.5px;color:#5C6B7A;}
   .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
-  .brand-row .badge{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;}
+  .brand-row .badge{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;}
   .brand-row .name{font-size:13px;font-weight:600;color:#0B1F33;}
-  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:${accent};margin-bottom:8px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase;color:${accent};margin-bottom:8px;}
   h1{font-size:19px;font-weight:600;margin:0 0 8px;color:#0B1F33;letter-spacing:-.2px;}
   p.sub{font-size:13.5px;line-height:1.6;color:#33475A;margin:0 0 22px;}
   label{display:block;font-size:11.5px;font-weight:600;color:#5C6B7A;margin-bottom:6px;}
@@ -197,7 +197,7 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .err{color:#B0342F;font-size:13px;margin-bottom:14px;}
   .ok{color:#2E8B57;font-size:13px;margin-bottom:14px;}
   .footnote{margin-top:22px;padding-top:18px;border-top:1px solid rgba(11,31,51,0.12);display:flex;flex-direction:column;gap:8px;}
-  .footnote-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#5C6B7A;font-family:'IBM Plex Mono',monospace;letter-spacing:.3px;}
+  .footnote-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#5C6B7A;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
   .footnote-row svg{width:13px;height:13px;flex-shrink:0;}
   .footnote-row a{color:#5C6B7A;text-decoration:none;}
   .footnote-row a:hover{color:${accent};}
@@ -215,10 +215,10 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .client-list{display:flex;flex-direction:column;gap:10px;}
   .client-row{border:1px solid rgba(11,31,51,0.12);border-radius:10px;overflow:hidden;}
   .client-row-main{display:flex;align-items:center;gap:12px;padding:12px 14px;flex-wrap:wrap;}
-  .thumb{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;object-fit:cover;}
+  .thumb{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;object-fit:cover;}
   .client-row-main .info{flex:1;min-width:120px;}
   .client-row-main .info .dname{font-size:13.5px;font-weight:600;}
-  .client-row-main .info .slug{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8a97a3;}
+  .client-row-main .info .slug{font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a97a3;}
   .status-pill{font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;}
   .status-pill.on{color:#0F6E56;background:#E1F5EE;}
   .status-pill.off{color:#5C6B7A;background:#EFEDE4;}
