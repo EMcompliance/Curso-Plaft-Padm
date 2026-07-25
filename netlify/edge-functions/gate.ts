@@ -203,20 +203,48 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .footnote-row a:hover{color:${accent};}
   a{color:${accent};}
   .muted{color:#5C6B7A;font-size:13px;}
-  .client-row{background:#FAF9F5;border:1px solid rgba(11,31,51,0.12);border-radius:10px;padding:16px;margin-bottom:12px;}
-  .client-row-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;}
-  .client-row-head .slug{font-family:'IBM Plex Mono',monospace;font-weight:600;}
-  .client-row-head .dname{color:#5C6B7A;}
-  .client-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .admin-header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+  .admin-header h1{margin:0;}
+  .search-box{display:flex;align-items:center;gap:8px;background:#FAF9F5;border:1px solid rgba(11,31,51,0.16);border-radius:9px;padding:9px 12px;min-width:220px;}
+  .search-box svg{width:15px;height:15px;color:#8a97a3;flex-shrink:0;}
+  .search-box input{border:none;outline:none;background:transparent;font-size:13px;font-family:inherit;width:100%;color:#0B1F33;padding:0;margin:0;}
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+  .stat-card{background:#FAF9F5;border:1px solid rgba(11,31,51,0.1);border-radius:9px;padding:12px 14px;}
+  .stat-card .stat-label{font-size:11px;color:#5C6B7A;margin-bottom:4px;}
+  .stat-card .stat-value{font-size:19px;font-weight:600;}
+  .client-list{display:flex;flex-direction:column;gap:10px;}
+  .client-row{border:1px solid rgba(11,31,51,0.12);border-radius:10px;overflow:hidden;}
+  .client-row-main{display:flex;align-items:center;gap:12px;padding:12px 14px;flex-wrap:wrap;}
+  .thumb{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;object-fit:cover;}
+  .client-row-main .info{flex:1;min-width:120px;}
+  .client-row-main .info .dname{font-size:13.5px;font-weight:600;}
+  .client-row-main .info .slug{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8a97a3;}
+  .status-pill{font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .status-pill.on{color:#0F6E56;background:#E1F5EE;}
+  .status-pill.off{color:#5C6B7A;background:#EFEDE4;}
+  .client-row-main .wbtn-link{padding:7px 13px;font-size:12.5px;white-space:nowrap;}
+  .icon-btn{width:32px;height:32px;border-radius:7px;border:1px solid rgba(11,31,51,0.14);background:#fff;color:#5C6B7A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0;}
+  .icon-btn svg{width:15px;height:15px;transition:transform .15s;}
+  .icon-btn:hover{border-color:${accent};color:${accent};}
+  .icon-btn.open svg{transform:rotate(180deg);}
+  .config-panel{display:none;padding:16px;background:#FAF9F5;border-top:1px solid rgba(11,31,51,0.1);}
+  .config-panel.open{display:block;}
+  .config-panel .config-label{font-size:10.5px;font-weight:600;color:#5C6B7A;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;}
+  .client-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
   .client-form input[type=password],.client-form input[type=text]{margin-bottom:0;}
-  .client-form input[type=color]{padding:2px;height:40px;border-radius:8px;border:1px solid rgba(11,31,51,0.22);}
+  .client-form input[type=color]{padding:2px;height:38px;border-radius:8px;border:1px solid rgba(11,31,51,0.22);}
   .client-form input[type=file]{font-size:12px;padding:8px 0;}
-  .client-form button{grid-column:1 / -1;width:auto;padding:9px 18px;justify-self:start;}
-  button.danger{background:#B0342F;width:auto;padding:8px 16px;font-size:13px;}
-  .create-form{display:flex;flex-direction:column;gap:10px;}
-  .client-row-actions{margin-bottom:12px;}
-  .client-row-actions form{display:inline;margin:0;}
-  .wbtn-link{display:inline-block;padding:8px 14px;border-radius:8px;background:${accent};color:#fff;font-size:13px;font-weight:600;text-decoration:none;}
+  .config-actions{display:flex;gap:8px;}
+  .config-actions button{width:auto;padding:8px 16px;font-size:12.5px;}
+  .config-actions button.ghost{background:transparent;border:1px solid rgba(11,31,51,0.16);color:#5C6B7A;}
+  button.danger{background:#B0342F;width:auto;padding:8px 16px;font-size:12.5px;}
+  .add-client-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed rgba(11,31,51,0.26);border-radius:10px;padding:14px 16px;cursor:pointer;background:#FAF9F5;}
+  .add-client-row .plus{width:30px;height:30px;border-radius:8px;background:#EFEDE4;color:${accent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px;font-weight:600;line-height:1;}
+  .add-client-row .add-label{font-size:13px;font-weight:600;}
+  .add-client-row .add-sub{font-size:11.5px;color:#5C6B7A;}
+  .add-client-row button{width:auto;padding:9px 16px;font-size:12.5px;}
+  .create-form{display:none;flex-direction:column;gap:10px;margin-top:14px;}
+  .create-form.open{display:flex;}
 </style></head>
 <body><div class="wrap">${body}</div></body></html>`;
 }
@@ -272,56 +300,102 @@ ${brandBlockHtml(opts.brand)}
 
 async function clientsManagementPage(message?: { ok?: string; err?: string; okHtml?: string }): Promise<Response> {
   const store = passwordStore();
+  const cStore = contentStore();
   const list = await store.list();
   const entries = await Promise.all(
     list.blobs.map(async (b) => ({
       slug: b.key,
       record: parseClientRecord(await store.get(b.key)),
+      hasContent: (await cStore.get(b.key)) !== null,
     })),
   );
 
+  const withBranding = entries.filter((e) => e.record?.displayName || e.record?.logo || e.record?.color).length;
+  const withContent = entries.filter((e) => e.hasContent).length;
+
   const rows =
     entries
-      .map(({ slug, record }) => {
+      .map(({ slug, record, hasContent }) => {
         const s = esc(slug);
         const currentName = record?.displayName || "";
         const currentColor = record?.color && /^#[0-9a-fA-F]{6}$/.test(record.color) ? record.color : DEFAULT_ACCENT;
-        const logoPreview = record?.logo ? `<img src="${esc(record.logo)}" alt="" style="height:20px;border-radius:4px;">` : "";
-        return `<div class="client-row">
-          <div class="client-row-head">${logoPreview}<span class="slug">${s}</span>${currentName ? `<span class="dname">${esc(currentName)}</span>` : ""}</div>
-          <div class="client-row-actions">
-            <a class="wbtn-link" href="/${s}/admin" target="_blank" rel="noopener">&#9998; Editar contenido del curso</a>
+        const thumb = record?.logo
+          ? `<img class="thumb" src="${esc(record.logo)}" alt="">`
+          : `<div class="thumb" style="background:${esc(currentColor)};">${esc(initialsFor(currentName || slug))}</div>`;
+        return `<div class="client-row" data-search="${s} ${esc(currentName.toLowerCase())}">
+          <div class="client-row-main">
+            ${thumb}
+            <div class="info">
+              <div class="dname">${currentName ? esc(currentName) : s}</div>
+              <div class="slug">/${s}</div>
+            </div>
+            <span class="status-pill ${hasContent ? "on" : "off"}">${hasContent ? "Contenido propio" : "Curso genérico"}</span>
+            <a class="wbtn-link" href="/${s}/admin" target="_blank" rel="noopener">Editar contenido</a>
+            <button type="button" class="icon-btn" onclick="toggleConfig('${s}', this)" aria-label="Configurar acceso y marca">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
           </div>
-          <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepLogo(this)">
-            <input type="hidden" name="action" value="update">
-            <input type="hidden" name="slug" value="${s}">
-            <input type="hidden" name="logo" class="logo-data">
-            <input type="password" name="password" placeholder="Nueva contraseña (opcional)">
-            <input type="text" name="displayName" placeholder="Nombre para mostrar" value="${esc(currentName)}">
-            <input type="color" name="color" value="${currentColor}" title="Color de la insignia">
-            <input type="file" accept="image/*" class="logo-file" title="Logo (opcional)">
-            <button type="submit">Guardar</button>
-          </form>
-          <form method="POST" action="${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="slug" value="${s}">
-            <button type="submit" class="danger">Eliminar</button>
-          </form>
+          <div class="config-panel" id="cfg-${s}">
+            <div class="config-label">Configuración de acceso y marca</div>
+            <form method="POST" action="${ADMIN_CLIENTS_API}" class="client-form" onsubmit="return prepLogo(this)">
+              <input type="hidden" name="action" value="update">
+              <input type="hidden" name="slug" value="${s}">
+              <input type="hidden" name="logo" class="logo-data">
+              <input type="password" name="password" placeholder="Nueva contraseña (opcional)">
+              <input type="text" name="displayName" placeholder="Nombre para mostrar" value="${esc(currentName)}">
+              <input type="color" name="color" value="${currentColor}" title="Color de la insignia">
+              <input type="file" accept="image/*" class="logo-file" title="Logo (opcional)">
+              <div class="config-actions">
+                <button type="submit">Guardar cambios</button>
+                <button type="button" class="ghost" onclick="toggleConfig('${s}')">Cerrar</button>
+              </div>
+            </form>
+            <form method="POST" action="${ADMIN_CLIENTS_API}" onsubmit="return confirm('¿Eliminar este cliente?');" style="margin-top:10px;">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="slug" value="${s}">
+              <button type="submit" class="danger">Eliminar cliente</button>
+            </form>
+          </div>
         </div>`;
       })
       .join("") || `<p class="muted">Todavía no hay ningún cliente configurado.</p>`;
 
   const body = `
   <div class="card">
-    <h1>Panel de administrador — Clientes</h1>
+    <div class="admin-header">
+      <div>
+        <div class="eyebrow">Panel de administrador</div>
+        <h1>Clientes</h1>
+      </div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input id="clientSearch" oninput="filterClients()" placeholder="Buscar cliente...">
+      </div>
+    </div>
     ${message?.okHtml ? `<div class="ok">${message.okHtml}</div>` : message?.ok ? `<div class="ok">${esc(message.ok)}</div>` : ""}
     ${message?.err ? `<div class="err">${esc(message.err)}</div>` : ""}
-    <p class="muted">Cada fila es un cliente. El nombre (slug) define la carpeta pública, ej: <code>cliente-a</code> corresponde a <code>curso.emcomplianceuy.com/cliente-a/</code>. La carpeta "default" es la raíz del sitio. El nombre para mostrar, el logo y el color son opcionales — si no los cargás, esa pantalla de acceso queda genérica. Para editar el contenido del curso de cada cliente, usá el botón "Editar contenido del curso": te lleva directo al curso en modo edición, y todo lo que cambies ahí se guarda solo, sin tener que subir ningún archivo.</p>
-    ${rows}
+    <p class="muted">Cada fila es un cliente. El nombre (slug) define la carpeta pública, ej: <code>cliente-a</code> corresponde a <code>curso.emcomplianceuy.com/cliente-a/</code>. La carpeta "default" es la raíz del sitio. Para editar el contenido del curso de cada cliente, usá el botón "Editar contenido": te lleva directo al curso en modo edición, y todo lo que cambies ahí se guarda solo, sin tener que subir ningún archivo. El resto (contraseña, nombre, logo, color) está en el ícono de flecha de cada fila.</p>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Clientes activos</div><div class="stat-value">${entries.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Con contenido propio</div><div class="stat-value">${withContent}</div></div>
+      <div class="stat-card"><div class="stat-label">Con marca propia</div><div class="stat-value">${withBranding}</div></div>
+    </div>
+    <div class="client-list">
+      ${rows}
+    </div>
   </div>
   <div class="card">
-    <h1>Agregar cliente nuevo</h1>
-    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" onsubmit="return prepLogo(this)">
+    <div class="add-client-row" onclick="toggleCreate()">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="plus">+</div>
+        <div>
+          <div class="add-label">Agregar cliente nuevo</div>
+          <div class="add-sub">Nombre, contraseña y marca opcional</div>
+        </div>
+      </div>
+      <button type="button">Crear cliente</button>
+    </div>
+    <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" id="createForm" onsubmit="return prepLogo(this)">
       <input type="hidden" name="action" value="create">
       <input type="hidden" name="logo" class="logo-data">
       <input type="text" name="slug" placeholder="nombre-cliente (solo letras, números y guiones)" pattern="[a-z0-9-]{1,40}" required>
@@ -344,6 +418,22 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
       r.onload = function () { logoHidden.value = r.result; form.submit(); };
       r.readAsDataURL(logoInput.files[0]);
       return false;
+    }
+    function toggleConfig(slug, btn) {
+      var panel = document.getElementById('cfg-' + slug);
+      if (!panel) return;
+      var open = panel.classList.toggle('open');
+      if (btn) btn.classList.toggle('open', open);
+    }
+    function toggleCreate() {
+      document.getElementById('createForm').classList.toggle('open');
+    }
+    function filterClients() {
+      var q = document.getElementById('clientSearch').value.toLowerCase();
+      document.querySelectorAll('.client-row').forEach(function (row) {
+        var text = row.getAttribute('data-search') || '';
+        row.style.display = text.indexOf(q) === -1 ? 'none' : '';
+      });
     }
   </script>`;
   return pageShell("Panel de administrador — Clientes", body);
