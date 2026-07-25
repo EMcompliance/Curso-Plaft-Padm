@@ -500,6 +500,10 @@
   <div class="drawer-foot">
     <button class="wbtn editonly" onclick="openAdminPanel()" id="btnAdminPanel"></button>
     <a class="wbtn editonly" href="/admin/clientes" target="_blank" rel="noopener">🔑 Clientes y accesos</a>
+    <div class="editonly" id="syncStatusRow" style="display:none;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);padding:4px 2px 8px;">
+      <span id="syncStatusDot" style="width:7px;height:7px;border-radius:50%;background:#2E8B57;display:inline-block;flex-shrink:0;"></span>
+      <span id="syncStatusTxt">Guardado en el servidor</span>
+    </div>
     <button class="wbtn editonly" onclick="openCertPanel()" id="btnCertPanel"></button>
     <button class="wbtn editonly" onclick="openMotivationPanel()" id="btnMotivationPanel"></button>
     <div class="drawer-section-title editonly" id="drawerSectionGeneral"></div>
@@ -1292,6 +1296,27 @@ function saveProject(silent){
   }
   if (bc){ try { bc.postMessage({ type:'update' }); } catch(e){} }
   if (!silent) toast(t().savedToast);
+  if (window.__EDITING_SLUG__) syncToServer();
+}
+
+let __syncTimer = null;
+function updateSyncStatus(state_){
+  const dot = document.getElementById('syncStatusDot');
+  const txt = document.getElementById('syncStatusTxt');
+  if (!dot || !txt) return;
+  if (state_ === 'saving'){ dot.style.background = '#C9A227'; txt.textContent = 'Guardando en el servidor…'; }
+  else if (state_ === 'error'){ dot.style.background = '#B0342F'; txt.textContent = 'No se pudo guardar en el servidor'; }
+  else { dot.style.background = '#2E8B57'; txt.textContent = 'Guardado en el servidor'; }
+}
+function syncToServer(){
+  updateSyncStatus('saving');
+  clearTimeout(__syncTimer);
+  __syncTimer = setTimeout(function(){
+    const body = 'slug=' + encodeURIComponent(window.__EDITING_SLUG__) + '&content=' + encodeURIComponent(JSON.stringify(state.project));
+    fetch('/__save_content', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body })
+      .then(function(r){ updateSyncStatus(r.ok ? 'saved' : 'error'); })
+      .catch(function(){ updateSyncStatus('error'); });
+  }, 900);
 }
 function loadProject(){
   try {
@@ -1560,6 +1585,7 @@ function renderChrome(){
   document.getElementById('pillEdit').classList.toggle('on', state.editing);
   document.getElementById('pillView').classList.toggle('on', !state.editing);
   document.getElementById('modePills').style.display = (window.__ADMIN_UNLOCKED__ === true) ? '' : 'none';
+  document.getElementById('syncStatusRow').style.display = window.__EDITING_SLUG__ ? 'flex' : 'none';
   const be = document.getElementById('btnOpenMirror');
   be.title = state.lang==='es' ? t().openEn : t().openEs;
   document.getElementById('btnMenuTxt').textContent = t().menu;
