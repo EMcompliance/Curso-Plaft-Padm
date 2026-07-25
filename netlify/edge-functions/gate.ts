@@ -163,15 +163,26 @@ function brandColor(brand?: ClientRecord | null): string {
   return brand?.color && /^#[0-9a-fA-F]{6}$/.test(brand.color) ? brand.color : DEFAULT_ACCENT;
 }
 
-function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACCENT): string {
+function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACCENT, wide: boolean = false): string {
+  const topbar = wide
+    ? `<div class="topbar"><div class="brand">EM Compliance <span>/ Admin</span></div><a class="back-link" href="/admin">&larr; Volver al curso</a></div>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${esc(title)}</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:-.1px;background:#EFEDE4;color:#0B1F33;margin:0;padding:24px;min-height:100vh;box-sizing:border-box;}
-  .wrap{max-width:420px;margin:56px auto;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:-.1px;background:#EFEDE4;color:#0B1F33;margin:0;padding:0;min-height:100vh;box-sizing:border-box;}
+  .wrap{max-width:420px;margin:56px auto;padding:24px;}
+  .wrap-wide{max-width:1140px;margin:0 auto;padding:28px 32px 48px;box-sizing:border-box;}
+  .topbar{background:#0B1F33;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .topbar .brand{color:#fff;font-weight:700;font-size:14px;letter-spacing:-.2px;}
+  .topbar .brand span{color:rgba(255,255,255,0.45);font-weight:400;}
+  .topbar .back-link{color:rgba(255,255,255,0.7);font-size:12.5px;text-decoration:none;}
+  .topbar .back-link:hover{color:#fff;}
+  .section-title{font-size:15px;font-weight:700;margin:0 0 14px;letter-spacing:-.2px;}
+  .btn-sm{width:auto;padding:9px 16px;font-size:12.5px;white-space:nowrap;}
   .card{background:#FFFFFF;border:1px solid rgba(11,31,51,0.12);padding:34px 30px;border-radius:14px;margin-bottom:16px;}
   .brand-logo{margin-bottom:24px;}
   .brand-logo img.logo{height:42px;display:block;margin-bottom:8px;}
@@ -235,19 +246,14 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
   .config-actions button{width:auto;padding:8px 16px;font-size:12.5px;}
   .config-actions button.ghost{background:transparent;border:1px solid rgba(11,31,51,0.16);color:#5C6B7A;}
   button.danger{background:#B0342F;width:auto;padding:8px 16px;font-size:12.5px;}
-  .add-client-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px dashed rgba(11,31,51,0.26);border-radius:10px;padding:14px 16px;cursor:pointer;background:#FAF9F5;}
-  .add-client-row .plus{width:30px;height:30px;border-radius:8px;background:#EFEDE4;color:${accent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:19px;font-weight:600;line-height:1;}
-  .add-client-row .add-label{font-size:13px;font-weight:600;}
-  .add-client-row .add-sub{font-size:11.5px;color:#5C6B7A;}
-  .add-client-row button{width:auto;padding:9px 16px;font-size:12.5px;}
   .create-form{display:none;flex-direction:column;gap:10px;margin-top:14px;}
   .create-form.open{display:flex;}
 </style></head>
-<body><div class="wrap">${body}</div></body></html>`;
+<body>${topbar}<div class="${wide ? "wrap wrap-wide" : "wrap"}">${body}</div></body></html>`;
 }
 
-function pageShell(title: string, body: string): Response {
-  return new Response(pageShellHtml(title, body), { headers: { "content-type": "text/html; charset=utf-8" } });
+function pageShell(title: string, body: string, wide: boolean = false): Response {
+  return new Response(pageShellHtml(title, body, DEFAULT_ACCENT, wide), { headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
 function loginPage(opts: { title: string; error?: string; action: string; hiddenScope: string; brand?: ClientRecord | null }): Response {
@@ -364,9 +370,12 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
         <div class="eyebrow">Panel de administrador</div>
         <h1>Clientes</h1>
       </div>
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input id="clientSearch" oninput="filterClients()" placeholder="Buscar cliente...">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="clientSearch" oninput="filterClients()" placeholder="Buscar cliente...">
+        </div>
+        <button type="button" class="btn-sm" onclick="toggleCreate()">+ Nuevo cliente</button>
       </div>
     </div>
     ${message?.okHtml ? `<div class="ok">${message.okHtml}</div>` : message?.ok ? `<div class="ok">${esc(message.ok)}</div>` : ""}
@@ -381,17 +390,8 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
       ${rows}
     </div>
   </div>
-  <div class="card">
-    <div class="add-client-row" onclick="toggleCreate()">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div class="plus">+</div>
-        <div>
-          <div class="add-label">Agregar cliente nuevo</div>
-          <div class="add-sub">Nombre, contraseña y marca opcional</div>
-        </div>
-      </div>
-      <button type="button">Crear cliente</button>
-    </div>
+  <div class="card" id="createCard">
+    <div class="section-title">Agregar cliente nuevo</div>
     <form method="POST" action="${ADMIN_CLIENTS_API}" class="create-form" id="createForm" onsubmit="return prepLogo(this)">
       <input type="hidden" name="action" value="create">
       <input type="hidden" name="logo" class="logo-data">
@@ -405,7 +405,6 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
       <button type="submit">Crear</button>
     </form>
   </div>
-  <p><a href="/admin">&larr; Volver al curso (modo admin)</a></p>
   <script>
     function prepLogo(form) {
       var logoInput = form.querySelector('.logo-file');
@@ -423,7 +422,9 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
       if (btn) btn.classList.toggle('open', open);
     }
     function toggleCreate() {
-      document.getElementById('createForm').classList.toggle('open');
+      var form = document.getElementById('createForm');
+      var open = form.classList.toggle('open');
+      if (open) document.getElementById('createCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     function filterClients() {
       var q = document.getElementById('clientSearch').value.toLowerCase();
@@ -433,7 +434,7 @@ async function clientsManagementPage(message?: { ok?: string; err?: string; okHt
       });
     }
   </script>`;
-  return pageShell("Panel de administrador — Clientes", body);
+  return pageShell("Panel de administrador — Clientes", body, true);
 }
 
 export default async (req: Request, context: Context) => {
