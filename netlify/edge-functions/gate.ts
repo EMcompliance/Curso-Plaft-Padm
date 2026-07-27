@@ -614,6 +614,14 @@ export default async (req: Request, context: Context) => {
     return injectFlag(response, true, content, editSlug);
   }
 
+  // --- Public certificate/score verification links bypass the password gate ---
+  if (url.searchParams.has("verify")) {
+    const rewritten = new URL(req.url);
+    rewritten.pathname = "/index.html";
+    const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
+    return injectFlag(response, false);
+  }
+
   // --- Everything else: gate by the general client password for this path's slug ---
   const scope = clientSlugFor(url.pathname);
   const sessionCookie = context.cookies.get(SESSION_COOKIE);
@@ -656,6 +664,9 @@ async function injectFlag(
   const injected = html.includes("</head>") ? html.replace("</head>", `${flagScript}</head>`) : flagScript + html;
   const headers = new Headers(response.headers);
   headers.delete("content-length");
+  headers.delete("etag");
+  headers.delete("last-modified");
+  headers.set("cache-control", "no-store, must-revalidate");
   return new Response(injected, { status: response.status, statusText: response.statusText, headers });
 }
 
