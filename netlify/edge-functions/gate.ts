@@ -253,8 +253,15 @@ function pageShellHtml(title: string, body: string, accent: string = DEFAULT_ACC
 <body>${topbar}<div class="${wide ? "wrap wrap-wide" : "wrap"}">${body}</div></body></html>`;
 }
 
+const NO_CACHE_HEADERS = {
+  "cache-control": "no-store, must-revalidate",
+  "netlify-cdn-cache-control": "no-store",
+};
+
 function pageShell(title: string, body: string, wide: boolean = false): Response {
-  return new Response(pageShellHtml(title, body, DEFAULT_ACCENT, wide), { headers: { "content-type": "text/html; charset=utf-8" } });
+  return new Response(pageShellHtml(title, body, DEFAULT_ACCENT, wide), {
+    headers: { "content-type": "text/html; charset=utf-8", ...NO_CACHE_HEADERS },
+  });
 }
 
 function loginPage(opts: { title: string; error?: string; action: string; hiddenScope: string; brand?: ClientRecord | null }): Response {
@@ -298,7 +305,7 @@ ${brandBlockHtml(opts.brand)}
 </div>`;
   return new Response(pageShellHtml(opts.title, body, brandColor(opts.brand)), {
     status: 401,
-    headers: { "content-type": "text/html; charset=utf-8" },
+    headers: { "content-type": "text/html; charset=utf-8", ...NO_CACHE_HEADERS },
   });
 }
 
@@ -666,7 +673,7 @@ async function injectFlag(
   headers.delete("content-length");
   headers.delete("etag");
   headers.delete("last-modified");
-  headers.set("cache-control", "no-store, must-revalidate");
+  for (const [k, v] of Object.entries(NO_CACHE_HEADERS)) headers.set(k, v);
   return new Response(injected, { status: response.status, statusText: response.statusText, headers });
 }
 
