@@ -4,3 +4,9 @@
 [[edge_functions]]
   function = "gate"
   path = "/*"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-store, must-revalidate"
+    Netlify-CDN-Cache-Control = "no-store"
