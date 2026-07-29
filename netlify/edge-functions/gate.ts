@@ -617,6 +617,7 @@ export default async (req: Request, context: Context) => {
     const content = await getClientContent(editSlug);
     const rewritten = new URL(req.url);
     rewritten.pathname = "/index.html";
+    rewritten.searchParams.set("_v", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
     return injectFlag(response, true, content, editSlug);
   }
@@ -625,6 +626,7 @@ export default async (req: Request, context: Context) => {
   if (url.searchParams.has("verify")) {
     const rewritten = new URL(req.url);
     rewritten.pathname = "/index.html";
+    rewritten.searchParams.set("_v", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
     return injectFlag(response, false);
   }
@@ -648,6 +650,7 @@ export default async (req: Request, context: Context) => {
   const content = await getClientContent(scope);
   const rewritten = new URL(req.url);
   rewritten.pathname = "/index.html";
+  rewritten.searchParams.set("_v", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
   return injectFlag(response, false, content);
 };
