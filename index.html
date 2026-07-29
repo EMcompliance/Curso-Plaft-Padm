@@ -1238,7 +1238,7 @@ function openDB(){
   });
   return dbPromise;
 }
-async function putMedia(id, blob){
+async function putMediaLocal(id, blob){
   const db = await openDB();
   return new Promise((res, rej) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
@@ -1246,6 +1246,28 @@ async function putMedia(id, blob){
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
+}
+async function putMedia(id, blob){
+  await putMediaLocal(id, blob);
+  if (window.__EDITING_SLUG__) uploadMediaToServer(id, blob);
+}
+function uploadMediaToServer(id, blob){
+  updateSyncStatus('saving');
+  const fd = new FormData();
+  fd.append('slug', window.__EDITING_SLUG__);
+  fd.append('mediaId', id);
+  fd.append('file', blob, 'media');
+  fetch('/__save_media', { method: 'POST', body: fd })
+    .then(function (r) { updateSyncStatus(r.ok ? 'saved' : 'error'); })
+    .catch(function () { updateSyncStatus('error'); });
+}
+async function fetchMediaFromServer(id){
+  if (!window.__CONTENT_SLUG__) return null;
+  try {
+    const res = await fetch('/__media/' + encodeURIComponent(window.__CONTENT_SLUG__) + '/' + encodeURIComponent(id));
+    if (!res.ok) return null;
+    return await res.blob();
+  } catch (e) { return null; }
 }
 async function getMedia(id){
   const db = await openDB();
@@ -1271,7 +1293,11 @@ const mediaURL = new Map(); // id -> objectURL
 async function urlFor(id){
   if (!id) return null;
   if (mediaURL.has(id)) return mediaURL.get(id);
-  const blob = await getMedia(id);
+  let blob = await getMedia(id);
+  if (!blob){
+    blob = await fetchMediaFromServer(id);
+    if (blob){ try { await putMediaLocal(id, blob); } catch(e){} }
+  }
   if (!blob) return null;
   const u = URL.createObjectURL(blob);
   mediaURL.set(id, u);
