@@ -7,6 +7,8 @@ const AUTH_PATH = "/__auth";
 const ADMIN_CLIENTS_PATH = "/admin/clientes";
 const ADMIN_CLIENTS_API = "/__admin_clients";
 const SAVE_CONTENT_PATH = "/__save_content";
+const SAVE_MEDIA_PATH = "/__save_media";
+const MEDIA_PATH_RE = /^\/__media\/([a-z0-9-]{1,40})\/([a-z0-9]{1,60})$/;
 const SESSION_HOURS = 16;
 const ADMIN_SESSION_HOURS = 8;
 const MAX_ATTEMPTS = 5;
@@ -115,6 +117,10 @@ function contentStore() {
 
 async function getClientContent(scope: string): Promise<string | null> {
   return contentStore().get(scope);
+}
+
+function mediaStore() {
+  return getStore({ name: "client-media", consistency: "strong" });
 }
 
 async function isRateLimited(ip: string, scope: string): Promise<boolean> {
@@ -601,6 +607,64 @@ export default async (req: Request, context: Context) => {
     });
   }
 
+  // --- POST /__save_media: admin live-editing uploads an image/audio file straight to Blobs ---
+  if (path === SAVE_MEDIA_PATH && req.method === "POST") {
+    if (!(await validAdminSession())) {
+      return new Response(JSON.stringify({ ok: false, error: "no autorizado" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    const form = await req.formData();
+    const slug = String(form.get("slug") || "").toLowerCase().trim();
+    const mediaId = String(form.get("mediaId") || "").trim();
+    const file = form.get("file");
+    if (!/^[a-z0-9-]{1,40}$/.test(slug) || !/^[a-z0-9]{1,60}$/.test(mediaId)) {
+      return new Response(JSON.stringify({ ok: false, error: "datos inválidos" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (!(file instanceof File)) {
+      return new Response(JSON.stringify({ ok: false, error: "falta el archivo" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if ((await getClientRecord(slug)) === null) {
+      return new Response(JSON.stringify({ ok: false, error: "cliente no encontrado" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    const bytes = await file.arrayBuffer();
+    await mediaStore().set(`${slug}__${mediaId}`, bytes, {
+      metadata: { contentType: file.type || "application/octet-stream" },
+    });
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  // --- GET /__media/{slug}/{mediaId}: serve a previously uploaded image/audio file ---
+  const mediaMatch = path.match(MEDIA_PATH_RE);
+  if (mediaMatch) {
+    const [, mSlug, mediaId] = mediaMatch;
+    const sessionCookie = context.cookies.get(SESSION_COOKIE);
+    const payload = sessionCookie ? await verifyToken(sessionCookie, SESSION_SECRET) : null;
+    const hasClientSession = !!payload && payload.scope === mSlug;
+    if (!hasClientSession && !(await validAdminSession())) {
+      return new Response("no autorizado", { status: 401 });
+    }
+    const entry = await mediaStore().getWithMetadata(`${mSlug}__${mediaId}`, { type: "arrayBuffer" });
+    if (!entry) return new Response("no encontrado", { status: 404 });
+    const contentType = (entry.metadata && (entry.metadata as { contentType?: string }).contentType) || "application/octet-stream";
+    return new Response(entry.data as ArrayBuffer, {
+      headers: { "content-type": contentType, "cache-control": "public, max-age=31536000, immutable" },
+    });
+  }
+
   // --- /admin or /{slug}/admin: unlock the in-page editor for a specific client's course ---
   const pathSegments = path.split("/").filter(Boolean);
   const isBareAdmin = path === "/admin";
@@ -619,7 +683,7 @@ export default async (req: Request, context: Context) => {
     rewritten.pathname = "/index.html";
     rewritten.searchParams.set("_v", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
-    return injectFlag(response, true, content, editSlug);
+    return injectFlag(response, true, content, editSlug, editSlug);
   }
 
   // --- Public certificate/score verification links bypass the password gate ---
@@ -652,7 +716,7 @@ export default async (req: Request, context: Context) => {
   rewritten.pathname = "/index.html";
   rewritten.searchParams.set("_v", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const response = await context.next(new Request(rewritten.toString(), { headers: req.headers }));
-  return injectFlag(response, false, content);
+  return injectFlag(response, false, content, undefined, scope);
 };
 
 async function injectFlag(
@@ -660,6 +724,7 @@ async function injectFlag(
   adminUnlocked: boolean,
   preloadedProject?: string | null,
   editingSlug?: string,
+  contentSlug?: string,
 ): Promise<Response> {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/html")) return response;
@@ -670,6 +735,9 @@ async function injectFlag(
   }
   if (editingSlug) {
     flagScript += `<script>window.__EDITING_SLUG__=${JSON.stringify(editingSlug)};</script>`;
+  }
+  if (contentSlug) {
+    flagScript += `<script>window.__CONTENT_SLUG__=${JSON.stringify(contentSlug)};</script>`;
   }
   const injected = html.includes("</head>") ? html.replace("</head>", `${flagScript}</head>`) : flagScript + html;
   const headers = new Headers(response.headers);
