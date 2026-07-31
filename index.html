@@ -547,6 +547,7 @@
     <button class="wbtn editonly" onclick="openTrashPanel()" id="btnTrash"></button>
     <button class="wbtn editonly" onclick="copyEsToEn()" id="btnCopyEsEn"></button>
     <button class="wbtn" onclick="exportProject()" id="btnExport"></button>
+    <button class="wbtn" onclick="exportFullCoursePdf()" id="btnExportCourseDoc"></button>
     <button class="wbtn editonly" onclick="document.getElementById('importInput').click()" id="btnImport"></button>
     <input type="file" id="importInput" accept="application/json,.json" style="display:none" onchange="importProject(event)">
   </div>
@@ -643,6 +644,8 @@ const UI = {
     brandSub:'Plataforma e-Learning', menu:'Índice', edit:'Edición', view:'Vista',
     openEn:'Ver en inglés (nueva pestaña)', openEs:'Ver en español (nueva pestaña)',
     drawerTitle:'Índice del curso', addModule:'+ Agregar módulo', export:'⬇ Exportar proyecto (respaldo)',
+    exportCourseDocBtn:'📄 Descargar contenido completo (PDF)', courseDocTitle:'Contenido completo del curso',
+    courseDocModuleLbl:'Módulo', courseDocMediaImage:'🖼 Imagen', courseDocMediaVideo:'🎬 Video', courseDocMediaAudio:'🔊 Audio', courseDocMediaFile:'📎 Archivo adjunto',
     import:'⬆ Importar proyecto', copyEsEn:'Copiar textos ES → EN (solo vacíos)',
     moduleOf:(i,n)=>`Módulo ${i} de ${n}`, completed:'completado',
     modLabel:(i)=>`Módulo ${i}`, sections:(n)=> n===1?'1 sección':`${n} secciones`,
@@ -781,6 +784,10 @@ const UI = {
     adminPanelBtn:'👤 Panel de administrador', adminPanelTitle:'Panel de administrador',
     adminEmpty:'Todavía no importaste ningún resultado. Pedile a cada capacitando que, al terminar el curso, use el botón «Exportar mi resultado» y te envíe ese archivo (por email, WhatsApp, etc.). Después importalo acá.',
     adminImport:'📥 Importar resultado', adminExportCsv:'⬇ Exportar todo a CSV',
+    rosterSectionTitle:'👥 Capacitandos', rosterSectionNote:'Se actualiza automáticamente a medida que cada persona se identifica y avanza (si configuraste la URL de seguimiento, también se sincroniza entre dispositivos con el botón de abajo).',
+    rosterCompletedLbl:(score)=>`✓ Completado · ${score}%`, rosterInProgressLbl:(done,total)=>`En progreso · ${done}/${total} módulos`,
+    rosterExportCsv:'⬇ Exportar capacitandos a CSV', rosterEmpty:'Todavía no se identificó nadie desde este dispositivo. Este listado se completa solo, a medida que las personas ingresan su nombre.',
+    adminCompletionsTitle:'🎓 Certificados emitidos',
     adminVerifyLbl:'Verificar un código de certificado', adminVerifyPh:'Ej: A1B2C3D4', adminVerifyBtn:'Buscar',
     adminVerifyHint:'La forma más simple de verificar: pedile a la persona que escanee el código QR de su certificado o PDF de resultado con la cámara del celular — muestra el resultado al instante (funciona si este archivo está publicado en una dirección web; si lo usás como archivo local, usá este campo de texto en su lugar).',
     adminVerifyFound:(name,date,score)=>`Código válido — ${name}, ${date}, ${score}%`,
@@ -811,6 +818,8 @@ const UI = {
     brandSub:'e-Learning Platform', menu:'Index', edit:'Edit', view:'View',
     openEn:'View in English (new tab)', openEs:'View in Spanish (new tab)',
     drawerTitle:'Course index', addModule:'+ Add module', export:'⬇ Export project (backup)',
+    exportCourseDocBtn:'📄 Download full content (PDF)', courseDocTitle:'Full course content',
+    courseDocModuleLbl:'Module', courseDocMediaImage:'🖼 Image', courseDocMediaVideo:'🎬 Video', courseDocMediaAudio:'🔊 Audio', courseDocMediaFile:'📎 Attached file',
     import:'⬆ Import project', copyEsEn:'Copy ES → EN texts (empty only)',
     moduleOf:(i,n)=>`Module ${i} of ${n}`, completed:'completed',
     modLabel:(i)=>`Module ${i}`, sections:(n)=> n===1?'1 section':`${n} sections`,
@@ -949,6 +958,10 @@ const UI = {
     adminPanelBtn:'👤 Admin panel', adminPanelTitle:'Admin panel',
     adminEmpty:'You haven\u2019t imported any results yet. Ask each learner to use the "Export my result" button when they finish and send you that file (email, WhatsApp, etc.). Then import it here.',
     adminImport:'📥 Import result', adminExportCsv:'⬇ Export all to CSV',
+    rosterSectionTitle:'👥 Trainees', rosterSectionNote:'Updates automatically as each person identifies themselves and progresses (if you set up the tracking URL, it also syncs across devices with the button below).',
+    rosterCompletedLbl:(score)=>`✓ Completed · ${score}%`, rosterInProgressLbl:(done,total)=>`In progress · ${done}/${total} modules`,
+    rosterExportCsv:'⬇ Export trainees to CSV', rosterEmpty:'No one has identified themselves from this device yet. This list fills in on its own as people enter their name.',
+    adminCompletionsTitle:'🎓 Certificates issued',
     adminVerifyLbl:'Verify a certificate code', adminVerifyPh:'E.g: A1B2C3D4', adminVerifyBtn:'Search',
     adminVerifyHint:'The simplest way to verify: ask the person to scan the QR code on their certificate or result PDF with their phone camera \u2014 it shows the result instantly (works if this file is published at a web address; if you use it as a local file, use this text field instead).',
     adminVerifyFound:(name,date,score)=>`Valid code \u2014 ${name}, ${date}, ${score}%`,
@@ -1073,6 +1086,7 @@ function migrateProject(project){
   }
   if (!project.trash) project.trash = [];
   if (!project.completionLog) project.completionLog = [];
+  if (!project.roster) project.roster = [];
   if (!project.motivationalMessages || !project.motivationalMessages.length){
     project.motivationalMessages = [
       bi('¡Excelente trabajo, {nombre}! Vas muy bien.', 'Excellent work, {nombre}! You\u2019re doing great.'),
@@ -1354,7 +1368,7 @@ function loadProject(){
 function onExternalUpdate(){
   const fresh = loadProject();
   if (!fresh) return;
-  state.project = fresh;
+  state.project = migrateProject(fresh);
   if (state.currentModule >= state.project.modules.length) state.currentModule = state.project.modules.length - 1;
   const y = window.scrollY;
   renderAll();
@@ -1371,6 +1385,7 @@ function getLearnerIdentity(){
 function setLearnerIdentity(name, email){
   const data = { name: (name||'').trim(), email: (email||'').trim(), startedAt: Date.now() };
   try { localStorage.setItem(LEARNER_KEY, JSON.stringify(data)); } catch(e){}
+  reportRosterPing('started');
   return data;
 }
 function getProgress(){
@@ -1381,17 +1396,21 @@ function getProgress(){
       return {
         modulesVisited: p.modulesVisited||[], quizzesPassed: p.quizzesPassed||[],
         reportedAt: p.reportedAt||null, examAttempts: p.examAttempts||0, examPassed: !!p.examPassed,
-        examScore: (p.examScore==null ? null : p.examScore)
+        examScore: (p.examScore==null ? null : p.examScore), rosterCompletedAt: p.rosterCompletedAt||null
       };
     }
   } catch(e){}
-  return { modulesVisited: [], quizzesPassed: [], reportedAt: null, examAttempts: 0, examPassed: false, examScore: null };
+  return { modulesVisited: [], quizzesPassed: [], reportedAt: null, examAttempts: 0, examPassed: false, examScore: null, rosterCompletedAt: null };
 }
 function saveProgressData(p){ try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch(e){} }
 function markModuleVisited(moduleId){
   if (!moduleId) return;
   const p = getProgress();
-  if (!p.modulesVisited.includes(moduleId)){ p.modulesVisited.push(moduleId); saveProgressData(p); }
+  if (!p.modulesVisited.includes(moduleId)){
+    p.modulesVisited.push(moduleId);
+    saveProgressData(p);
+    reportRosterPing('in_progress');
+  }
 }
 function markQuizPassed(blockId){
   if (!blockId) return;
@@ -1474,6 +1493,7 @@ function seedProject(){
     settings: { requireIdentity: true, passingScore: 80, sequentialLock: false, trackingUrl: '', examModuleId: null, maxExamAttempts: 3, finalModuleId: null },
     trash: [],
     completionLog: [],
+    roster: [],
     motivationalMessages: [
       bi('¡Excelente trabajo, {nombre}! Vas muy bien.', 'Excellent work, {nombre}! You\u2019re doing great.'),
       bi('¡Un módulo menos, {nombre}! Seguí así.', 'One more module done, {nombre}! Keep it up.'),
@@ -1652,6 +1672,7 @@ function renderChrome(){
   document.getElementById('lblMaxAttempts').textContent = t().maxAttemptsLbl;
   document.getElementById('maxAttemptsSel').value = String((state.project.settings && state.project.settings.maxExamAttempts) || 3);
   document.getElementById('btnExport').textContent = t().export;
+  document.getElementById('btnExportCourseDoc').textContent = t().exportCourseDocBtn;
   document.getElementById('btnImport').textContent = t().import;
   document.getElementById('btnCopyEsEn').textContent = t().copyEsEn;
   document.getElementById('creditFoot').textContent = t().credit;
@@ -5202,14 +5223,64 @@ function setTrackingUrl(v){
   state.project.settings.trackingUrl = (v||'').trim();
   saveProject(true);
 }
+
+/* ---------------- Seguimiento de capacitandos (listado en vivo) ---------------- */
+function rosterKeyOf(entry){
+  return (entry.email||'').toLowerCase().trim() || (entry.name||'').toLowerCase().trim();
+}
+function upsertRosterLocal(entry){
+  state.project.roster = state.project.roster || [];
+  const key = rosterKeyOf(entry);
+  if (!key) return;
+  const idx = state.project.roster.findIndex(r => rosterKeyOf(r) === key);
+  if (idx >= 0) state.project.roster[idx] = Object.assign({}, state.project.roster[idx], entry);
+  else state.project.roster.push(entry);
+  saveProject(true);
+}
+let rosterPingInFlight = false;
+async function reportRosterPing(status){
+  if (state.editing) return;
+  const learner = getLearnerIdentity();
+  if (!learner || !learner.name) return;
+  const p = state.project;
+  const prog = getProgress();
+  const st = courseProgressStats(p);
+  const entry = {
+    name: learner.name, email: learner.email || '',
+    status, modulesDone: st.modDone, modulesTotal: st.modTotal,
+    lastActivityAt: new Date().toISOString(),
+    overallScore: null, verificationCode: null
+  };
+  if (status === 'completed'){
+    const payload = buildResultPayload();
+    if (payload){ entry.overallScore = payload.overallScore; entry.verificationCode = payload.verificationCode; }
+  }
+  upsertRosterLocal(entry);
+  const url = p.settings && p.settings.trackingUrl;
+  if (!url || typeof fetch !== 'function' || rosterPingInFlight) return;
+  rosterPingInFlight = true;
+  try {
+    await fetch(url, {
+      method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(Object.assign({ app: 'hsa-elearning-roster', courseTitle: p.org.title.es||p.org.title.en||'' }, entry))
+    });
+  } catch(e){ /* sin conexión: se reintenta en la próxima actividad */ }
+  finally { rosterPingInFlight = false; }
+}
+
 let reportingInFlight = false;
 async function maybeReportCompletion(){
   if (state.editing) return;
+  if (!isCourseComplete(state.project)) return;
+  const prog = getProgress();
+  if (!prog.rosterCompletedAt){
+    prog.rosterCompletedAt = Date.now();
+    saveProgressData(prog);
+    reportRosterPing('completed');
+  }
   if (reportingInFlight) return;
   const url = state.project.settings && state.project.settings.trackingUrl;
   if (!url) return;
-  if (!isCourseComplete(state.project)) return;
-  const prog = getProgress();
   if (prog.reportedAt) return; // ya reportado desde este dispositivo
   const payload = buildResultPayload();
   if (!payload) return;
@@ -5455,6 +5526,130 @@ function exportResult(){
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
   toast(t().resultExported);
+}
+function stripHtmlForPrint(html){
+  if (!html) return '';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  // conservar negrita/listas de forma simple, sacar el resto de las etiquetas
+  tmp.querySelectorAll('b,strong').forEach(el => { el.outerHTML = '**' + el.innerHTML.replace(/<[^>]+>/g,'') + '**'; });
+  let text = tmp.innerHTML
+    .replace(/<li[^>]*>/gi, '\n• ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return text;
+}
+function mdBoldToHtml(text){
+  return esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+}
+async function exportFullCoursePdf(){
+  let w2 = null;
+  try { w2 = window.open('', '_blank'); } catch(e){ w2 = null; }
+  if (!w2){ toast(t().popupBlocked, 3600); return; }
+  try { w2.document.write('<!DOCTYPE html><meta charset="utf-8"><body style="font-family:sans-serif;padding:60px;color:#999;">…</body>'); } catch(e){}
+
+  const p = state.project;
+  const brand = p.org.brandColor || '#B0342F';
+  const cert = p.certificate || {};
+  let logoDataUrl = null;
+  if (cert.logoMediaId){
+    try { const blob = await getMedia(cert.logoMediaId); if (blob) logoDataUrl = await blobToDataURL(blob); } catch(e){}
+  }
+  const logoHtml = logoDataUrl ? `<img src="${logoDataUrl}" alt="" style="max-height:44px;max-width:200px;display:block;margin-bottom:20px;">` : '';
+
+  const mediaLabel = { image:t().courseDocMediaImage, video:t().courseDocMediaVideo, audio:t().courseDocMediaAudio, file:t().courseDocMediaFile };
+
+  const modulesHtml = p.modules.map((m, mi) => {
+    const title = m.hero.title[state.lang] || m.hero.title.es || '';
+    const subtitle = m.hero.subtitle ? (m.hero.subtitle[state.lang] || m.hero.subtitle.es || '') : '';
+    const sectionsHtml = m.sections.map(s => {
+      const secTitle = s.title[state.lang] || s.title.es || '';
+      const blocksHtml = s.blocks.map(b => {
+        if (b.type === 'text' || b.type === 'callout'){
+          const raw = b.text ? (b.text[state.lang] || b.text.es || '') : '';
+          const plain = stripHtmlForPrint(raw);
+          if (!plain) return '';
+          const cls = b.type === 'callout' ? 'callout' : 'text';
+          return `<div class="blk ${cls}">${mdBoldToHtml(plain)}</div>`;
+        }
+        if (b.type === 'quiz'){
+          const q = b.question ? (b.question[state.lang] || b.question.es || '') : '';
+          const optsHtml = (b.options||[]).map(o => {
+            const oText = o.text ? (o.text[state.lang] || o.text.es || '') : '';
+            return `<div class="opt ${o.correct?'correct':''}">${o.correct?'✓ ':'&nbsp;&nbsp;'}${esc(oText)}</div>`;
+          }).join('');
+          const expl = b.explanation ? (b.explanation[state.lang] || b.explanation.es || '') : '';
+          return `<div class="blk quiz">
+            <div class="qtext">${esc(q)}</div>
+            <div class="opts">${optsHtml}</div>
+            ${expl ? `<div class="expl"><b>${esc(t().examReviewExplLbl)}:</b> ${esc(expl)}</div>` : ''}
+          </div>`;
+        }
+        if (mediaLabel[b.type]){
+          const captionField = b.caption || b.alt;
+          const caption = captionField ? (captionField[state.lang] || captionField.es || '') : '';
+          return `<div class="blk media-note">${mediaLabel[b.type]}${caption ? ': ' + esc(caption) : ''}</div>`;
+        }
+        return '';
+      }).join('');
+      if (!blocksHtml.trim()) return '';
+      return `<div class="section"><div class="sectitle">${esc(secTitle)}</div>${blocksHtml}</div>`;
+    }).join('');
+    return `<div class="module">
+      <div class="modnum">${t().courseDocModuleLbl} ${mi+1}</div>
+      <h2>${esc(title)}</h2>
+      ${subtitle ? `<div class="modsub">${esc(subtitle)}</div>` : ''}
+      ${sectionsHtml}
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="${state.lang}"><head><meta charset="utf-8">
+<title>${esc(t().courseDocTitle)}</title>
+<style>
+  body{font-family:'IBM Plex Sans',Arial,sans-serif;background:#f4f4f0;margin:0;padding:40px;display:flex;justify-content:center;}
+  .doc{background:#fff;max-width:760px;width:100%;padding:52px 50px;box-shadow:0 10px 40px rgba(0,0,0,0.1);}
+  .badge{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:${brand};margin-bottom:6px;}
+  h1{font-size:24px;font-weight:700;color:#16324F;margin:0 0 4px;}
+  .sub{font-size:13px;color:#888;margin-bottom:40px;}
+  .module{border-top:3px solid ${brand};padding-top:24px;margin-top:40px;}
+  .module:first-of-type{margin-top:0;}
+  .modnum{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${brand};margin-bottom:4px;}
+  .module h2{font-size:19px;font-weight:700;color:#16324F;margin:0 0 6px;}
+  .modsub{font-size:13.5px;color:#777;margin-bottom:22px;line-height:1.5;}
+  .section{margin-bottom:22px;}
+  .sectitle{font-size:13px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:6px;}
+  .blk{font-size:13.5px;color:#333;line-height:1.65;margin-bottom:12px;}
+  .blk.callout{background:#f8f8f6;border-left:3px solid ${brand};padding:10px 14px;border-radius:4px;}
+  .blk.quiz{background:#fbfbfa;border-radius:6px;padding:14px 16px;}
+  .blk.media-note{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#999;font-style:italic;}
+  .qtext{font-weight:600;color:#222;margin-bottom:8px;}
+  .opts{margin-bottom:8px;}
+  .opt{font-size:13px;color:#555;padding:2px 0;}
+  .opt.correct{color:#2e8b57;font-weight:700;}
+  .expl{font-size:12.5px;color:#444;background:#fff;border-radius:5px;padding:8px 10px;line-height:1.5;}
+  .noprint{margin-top:30px;text-align:center;}
+  .noprint button{font-family:'IBM Plex Sans',Arial,sans-serif;background:${brand};color:#fff;border:none;padding:12px 26px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  @media print{ .noprint{display:none;} body{background:#fff;padding:0;} .doc{box-shadow:none;} }
+</style></head><body>
+  <div>
+    <div class="doc">
+      ${logoHtml}
+      <div class="badge">${esc(p.org.badge||'')}</div>
+      <h1>${esc(t().courseDocTitle)}</h1>
+      <div class="sub">${esc(p.org.title[state.lang]||p.org.title.es||'')}</div>
+      ${modulesHtml}
+    </div>
+    <div class="noprint"><button onclick="window.print()">${esc(t().certPrint)}</button></div>
+  </div>
+</body></html>`;
+  try { w2.document.open(); w2.document.write(html); w2.document.close(); }
+  catch(e){ toast(t().popupBlocked, 3600); }
 }
 async function exportExamReviewPdf(){
   const settings = state.project.settings || {};
@@ -5835,13 +6030,35 @@ function buildAdminPanel(){
   if (!body) return;
   hydrateAdminVerifyLabels();
   const log = state.project.completionLog || [];
+  const roster = (state.project.roster || []).slice().sort((a,b)=> new Date(b.lastActivityAt||0) - new Date(a.lastActivityAt||0));
   const hasCloud = !!(state.project.settings && state.project.settings.trackingUrl);
   const importRow = `<label class="wbtn" style="cursor:pointer;display:block;text-align:center;margin-top:10px;">${esc(t().adminImport)}<input type="file" accept="application/json,.json" style="display:none" onchange="importResult(event)"></label>`;
   const syncRow = hasCloud
     ? `<button class="wbtn" style="margin-top:10px;width:100%;" onclick="syncCompletionsFromCloud()">${esc(t().adminSyncCloud)}</button>`
     : `<div class="sp-note" style="margin-top:10px;">${esc(t().adminSyncCloudHint)}</div>`;
+
+  const rosterStatusText = (r) => r.status === 'completed'
+    ? t().rosterCompletedLbl(r.overallScore!=null?r.overallScore:'—')
+    : t().rosterInProgressLbl(r.modulesDone||0, r.modulesTotal||0);
+  const rosterRows = roster.map((r,i) => `
+    <div class="mod-item">
+      <div class="info" style="cursor:default;">
+        <b>${esc(r.name)}</b> ${r.status==='completed' ? '<span style="color:var(--risk-low);">✓</span>' : ''}
+        <span>${esc(r.email||'')} · ${esc(rosterStatusText(r))} · ${r.lastActivityAt ? esc(new Date(r.lastActivityAt).toLocaleString()) : ''}</span>
+      </div>
+      <div class="acts">
+        <button class="ibtn danger" title="${esc(t().del)}" onclick="deleteRosterEntry(${i})">🗑</button>
+      </div>
+    </div>`).join('');
+  const rosterSection = `
+    <div class="drawer-section-title">${esc(t().rosterSectionTitle)}</div>
+    <div class="sp-note" style="margin-bottom:10px;">${esc(t().rosterSectionNote)}</div>
+    ${roster.length ? rosterRows + `<button class="wbtn" style="margin-top:10px;" onclick="exportRosterCsv()">${esc(t().rosterExportCsv)}</button>` : `<div class="sp-note">${esc(t().rosterEmpty)}</div>`}
+    ${syncRow}
+  `;
+
   if (!log.length){
-    body.innerHTML = `<div class="sp-note">${esc(t().adminEmpty)}</div>${syncRow}${importRow}`;
+    body.innerHTML = rosterSection + `<div class="drawer-section-title" style="margin-top:16px;">${esc(t().adminCompletionsTitle)}</div><div class="sp-note">${esc(t().adminEmpty)}</div>${importRow}`;
     return;
   }
   const rows = log.map((e,i) => `
@@ -5854,7 +6071,27 @@ function buildAdminPanel(){
         <button class="ibtn danger" title="${esc(t().del)}" onclick="deleteResultEntry(${i})">🗑</button>
       </div>
     </div>`).join('');
-  body.innerHTML = rows + `<button class="wbtn" style="margin-top:10px;" onclick="exportResultsCsv()">${esc(t().adminExportCsv)}</button>` + syncRow + importRow;
+  body.innerHTML = rosterSection + `<div class="drawer-section-title" style="margin-top:16px;">${esc(t().adminCompletionsTitle)}</div>` + rows + `<button class="wbtn" style="margin-top:10px;" onclick="exportResultsCsv()">${esc(t().adminExportCsv)}</button>` + importRow;
+}
+function deleteRosterEntry(i){
+  if (!state.project.roster) return;
+  state.project.roster.splice(i,1);
+  saveProject(true);
+  buildAdminPanel();
+}
+function exportRosterCsv(){
+  const roster = state.project.roster || [];
+  const header = 'Nombre,Email,Estado,Modulos completados,Modulos totales,Puntaje,Ultima actividad,Codigo\n';
+  const rows = roster.map(r => [
+    r.name, r.email||'', r.status||'', r.modulesDone||0, r.modulesTotal||0,
+    r.overallScore!=null?r.overallScore:'', r.lastActivityAt||'', r.verificationCode||''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'listado_capacitandos.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
 }
 function hydrateAdminVerifyLabels(){
   const lbl = document.getElementById('adminVerifyLbl2');
@@ -5889,15 +6126,25 @@ async function syncCompletionsFromCloud(){
     const list = await res.json();
     if (!Array.isArray(list)) throw new Error('respuesta inesperada');
     state.project.completionLog = state.project.completionLog || [];
-    let added = 0;
+    state.project.roster = state.project.roster || [];
+    let addedCompletions = 0, updatedRoster = 0;
     list.forEach(entry => {
-      if (!entry || !entry.verificationCode) return;
-      const dup = state.project.completionLog.some(e => e.verificationCode === entry.verificationCode);
-      if (!dup){ state.project.completionLog.push(entry); added++; }
+      if (!entry) return;
+      if (entry.app === 'hsa-elearning-roster' || entry.status){
+        const key = rosterKeyOf(entry);
+        if (!key) return;
+        const idx = state.project.roster.findIndex(r => rosterKeyOf(r) === key);
+        if (idx >= 0) state.project.roster[idx] = Object.assign({}, state.project.roster[idx], entry);
+        else state.project.roster.push(entry);
+        updatedRoster++;
+      } else if (entry.verificationCode){
+        const dup = state.project.completionLog.some(e => e.verificationCode === entry.verificationCode);
+        if (!dup){ state.project.completionLog.push(entry); addedCompletions++; }
+      }
     });
     saveProject(true);
     buildAdminPanel();
-    toast(t().adminSyncDone(added));
+    toast(t().adminSyncDone(addedCompletions + updatedRoster));
   } catch(e){
     toast(t().adminSyncError, 3600);
   }
@@ -6764,7 +7011,7 @@ async function importProject(ev){
     for (const [id, du] of Object.entries(payload.media||{})){
       try { await putMedia(id, dataURLToBlob(du)); } catch(e){}
     }
-    state.project = payload.project;
+    state.project = migrateProject(payload.project);
     state.currentModule = 0;
     mediaURL.forEach(u=>URL.revokeObjectURL(u)); mediaURL.clear();
     saveProject(true); renderAll(); toggleDrawer(false);
