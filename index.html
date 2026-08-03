@@ -44,8 +44,8 @@
 
   /* ---------- Header ---------- */
   header.appbar{position:sticky;top:0;z-index:40;background:var(--navy-deep);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;}
-  .brand{display:flex;align-items:center;gap:12px;min-width:0;}
-  .brand-badge{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;letter-spacing:.5px;flex-shrink:0;background:var(--brand);color:#fff;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1;justify-content:center;}
+  .brand-badge{display:none;width:38px;height:38px;border-radius:7px;align-items:center;justify-content:center;font-weight:600;font-size:11px;letter-spacing:.5px;flex-shrink:0;background:var(--brand);color:#fff;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;}
   .brand-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
   .brand-txt b{font-size:13.5px;font-weight:600;letter-spacing:.15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .brand-txt span{font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.4px;text-transform:uppercase;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -442,14 +442,12 @@
 <body>
 
 <header class="appbar">
+  <button class="hbtn hdr-menu" onclick="toggleDrawer(true)">
+    <span class="hamb"><span></span><span></span><span></span></span>
+    <span id="btnMenuTxt"></span>
+  </button>
   <div class="brand">
     <div class="brand-badge" id="brandBadge" data-brand-field="badge" data-edit maxlength="4">Heli</div>
-    <div class="brand-txt">
-      <b id="brandTitle" data-brand-field="title" data-edit>Programa PLAFT/PADM</b>
-      <span id="brandSub">Plataforma e-Learning</span>
-    </div>
-  </div>
-  <div class="hdr-tools">
     <div class="hdr-logo-wrap">
       <div class="hdr-logo" id="hdrLogo"></div>
       <label class="hdr-logo-btn editonly" title="" id="hdrLogoUploadLbl">
@@ -458,6 +456,12 @@
       </label>
       <button class="hdr-logo-btn editonly" id="hdrLogoRemoveBtn" onclick="removeHeaderLogo()" style="display:none;" title="">✕</button>
     </div>
+    <div class="brand-txt">
+      <b id="brandTitle" data-brand-field="title" data-edit>Programa PLAFT/PADM</b>
+      <span id="brandSub">Plataforma e-Learning</span>
+    </div>
+  </div>
+  <div class="hdr-tools">
     <div class="pillgroup" id="langPills">
       <button id="pillEs" onclick="setLang('es')">ES</button>
       <button id="pillEn" onclick="setLang('en')">EN</button>
@@ -467,10 +471,6 @@
       <button id="pillEdit" onclick="setMode(true)"></button>
       <button id="pillView" onclick="setMode(false)"></button>
     </div>
-    <button class="hbtn" onclick="toggleDrawer(true)">
-      <span class="hamb"><span></span><span></span><span></span></span>
-      <span id="btnMenuTxt"></span>
-    </button>
   </div>
 </header>
 
