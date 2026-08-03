@@ -273,9 +273,9 @@ function pageShell(title: string, body: string, wide: boolean = false): Response
 function loginPage(opts: { title: string; error?: string; action: string; hiddenScope: string; brand?: ClientRecord | null }): Response {
   const body = `<div class="card">
 ${brandBlockHtml(opts.brand)}
-<div class="eyebrow">Acceso protegido</div>
 <form method="POST" action="${esc(opts.action)}">
   <h1>${esc(opts.title)}</h1>
+  <p class="sub">Ingresá tu contraseña para continuar.</p>
   ${opts.error ? `<div class="err">${esc(opts.error)}</div>` : ""}
   <input type="hidden" name="scope" value="${esc(opts.hiddenScope)}">
   <div class="pw-wrap">
